@@ -4,14 +4,9 @@
     "slug": "seedlings-microgreens",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/icon.png",
     "scheme": "seedlings",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FAF7F1"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -21,7 +16,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FAF7F1"
       },
       "package": "com.seedlingsmicrogreens.app"
@@ -30,7 +25,8 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-status-bar"
     ],
     "extra": {
       "router": {},
