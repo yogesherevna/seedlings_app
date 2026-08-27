@@ -1,0 +1,106 @@
+[
+  {
+    "id": "broccoli",
+    "name": "Broccoli Microgreens",
+    "category": "Microgreens",
+    "description": "Fresh, mild and packed with nutrients. Rich in vitamins and antioxidants.",
+    "price": 120,
+    "mrp": 150,
+    "weights": [
+      "50g",
+      "100g",
+      "200g",
+      "500g"
+    ],
+    "defaultWeight": "100g",
+    "image": "broccoli.jpeg",
+    "popular": true,
+    "inStock": true
+  },
+  {
+    "id": "sunflower",
+    "name": "Sunflower Microgreens",
+    "category": "Microgreens",
+    "description": "Crunchy, nutty and fresh. A wholesome addition to salads and bowls.",
+    "price": 110,
+    "mrp": 130,
+    "weights": [
+      "50g",
+      "100g",
+      "200g",
+      "500g"
+    ],
+    "defaultWeight": "100g",
+    "image": "sunflower.jpeg",
+    "popular": true,
+    "inStock": true
+  },
+  {
+    "id": "radish",
+    "name": "Radish Microgreens",
+    "category": "Microgreens",
+    "description": "Peppery and vibrant microgreens with a fresh, crisp finish.",
+    "price": 100,
+    "mrp": 120,
+    "weights": [
+      "50g",
+      "100g",
+      "200g",
+      "500g"
+    ],
+    "defaultWeight": "100g",
+    "image": "radish.jpeg",
+    "popular": true,
+    "inStock": true
+  },
+  {
+    "id": "pea",
+    "name": "Pea Shoots",
+    "category": "Microgreens",
+    "description": "Sweet, tender pea shoots that work beautifully in salads and wraps.",
+    "price": 130,
+    "mrp": 150,
+    "weights": [
+      "50g",
+      "100g",
+      "200g",
+      "500g"
+    ],
+    "defaultWeight": "100g",
+    "image": "peashoots.jpeg",
+    "popular": true,
+    "inStock": true
+  },
+  {
+    "id": "carrots",
+    "name": "Carrots",
+    "category": "Microgreens",
+    "description": "Sweet, crunchy and full of beta-carotene. Perfect for snacking or adding to dishes.",
+    "price": 299,
+    "mrp": 360,
+    "weights": [
+      "250g",
+      "500g"
+    ],
+    "defaultWeight": "250g",
+    "image": "carrots.jpeg",
+    "popular": true,
+    "inStock": true
+  },
+  {
+    "id": "combo",
+    "name": "Healthy Greens Combo",
+    "category": "Combo",
+    "description": "A curated mix of fresh microgreens for a colourful weekly routine.",
+    "price": 299,
+    "mrp": 360,
+    "weights": [
+      "250g",
+      "500g"
+    ],
+    "defaultWeight": "250g",
+    "image": "combo.jpeg",
+    "popular": true,
+    "inStock": true
+  }
+]
