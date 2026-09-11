@@ -7,7 +7,7 @@ import { useAppStore } from '../store/appStore';
 export default function Splash() {
   const authenticated = useAppStore((s) => s.authenticated);
   useEffect(() => {
-    const t = setTimeout(() => router.replace(authenticated ? '/(tabs)' : '/auth/login'), 1700);
+    const t = setTimeout(() => router.replace(authenticated ? '/(customer)/(tabs)' : '/(customer)/auth/login'), 1700);
     return () => clearTimeout(t);
   }, [authenticated]);
   return (
