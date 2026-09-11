@@ -1,6 +1,7 @@
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../core/firebaseClient';
 import { normalizeIndianMobile } from '../clientOnboarding';
+import { stripUndefined } from '../core/firestoreData';
 
 export type CustomerFeedback = {
   id: string;
@@ -48,7 +49,7 @@ export async function createCustomerFeedback(input: CreateCustomerFeedbackInput)
   if (!comment) throw new Error('Please enter your feedback.');
   if (comment.length > 1000) throw new Error('Feedback must be 1000 characters or fewer.');
 
-  const ref = await addDoc(collection(db, 'feedback'), {
+  const ref = await addDoc(collection(db, 'feedback'), stripUndefined({
     customerId: mobile,
     orderId: clean(input.orderId),
     productId: clean(input.productId),
@@ -58,7 +59,7 @@ export async function createCustomerFeedback(input: CreateCustomerFeedbackInput)
     status: 'new',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  }));
 
   return { id: ref.id };
 }

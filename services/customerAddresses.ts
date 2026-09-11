@@ -1,6 +1,7 @@
 import { doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from './core/firebaseClient';
 import { normalizeIndianMobile } from './clientOnboarding';
+import { stripUndefined } from './core/firestoreData';
 
 export type CustomerAddress = {
   id: string;
@@ -74,7 +75,7 @@ export async function updateCustomerAddresses(mobile: string, addresses: Custome
   if (!normalized) throw new Error('Invalid customer mobile number.');
   const cleaned = addresses.map((address) => validateAddress(address, normalized));
   await updateDoc(customerRef(normalized), {
-    addresses: cleaned,
+    addresses: stripUndefined(cleaned),
     updatedAt: serverTimestamp(),
   });
 }

@@ -4,6 +4,7 @@ import { normalizeIndianMobile } from '../clientOnboarding';
 import type { CartItem } from '../cart/cartService';
 import type { CustomerAddress } from '../customerAddresses';
 import type { PaymentTransaction } from '../payments/paymentService';
+import { stripUndefined } from '../core/firestoreData';
 
 export type CreateCustomerOrderInput = { mobile: string; items: CartItem[]; address: CustomerAddress; paymentMethod: string; deliverySlot?: { id: string; name?: string; date?: string; startTime?: string; endTime?: string; deliveryCharge?: number } };
 
@@ -45,13 +46,13 @@ export async function createCustomerOneTimeOrder(input: CreateCustomerOrderInput
   const total = subtotal + deliveryFee;
   const addressSnapshot = { id: input.address.id, label: input.address.label ?? 'Home', name: input.address.name ?? '', mobileNumber: input.address.mobileNumber ?? mobile, addressLine1: input.address.addressLine1 ?? '', addressLine2: input.address.addressLine2 ?? '', landmark: input.address.landmark ?? '', city: input.address.city ?? '', state: input.address.state ?? '', pincode: input.address.pincode ?? '' };
   const orderNumber = createOrderNumber();
-  const orderRef = await addDoc(collection(db, 'orders'), {
+  const orderRef = await addDoc(collection(db, 'orders'), stripUndefined({
     orderNumber, customerId: mobile, customerName: typeof customer.name === 'string' ? customer.name : addressSnapshot.name, customerMobile: mobile,
     items: orderItems, subtotal, deliveryFee, discount, total, mrpTotal, discountTotal: discount, deliveryCharge: deliveryFee, walletApplied: 0, totalAmount: total, currency: 'INR',
     paymentStatus: 'pending', paymentMethod: input.paymentMethod, status: 'confirmed', deliveryStatus: 'pending', deliveryAddress: addressSnapshot, deliveryAddressSnapshot: addressSnapshot,
     deliverySlotId: input.deliverySlot?.id, deliveryChargeId: input.deliverySlot?.id, deliveryChargeName: input.deliverySlot?.name, deliveryChargeSnapshot: deliveryFee,
     scheduledDeliveryDate: input.deliverySlot?.date, orderType: 'one_time', packingStatus: 'pending', statusHistory: [{ status: 'confirmed', changedAt: new Date().toISOString(), source: 'customer_mobile' }], createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-  });
+  }));
   return { id: orderRef.id, orderNumber, total };
 }
 
