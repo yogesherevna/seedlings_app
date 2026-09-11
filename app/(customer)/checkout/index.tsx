@@ -7,10 +7,11 @@ import { useAppStore } from '../../../store/appStore';
 import { getCartTotals } from '../../../services/cart/cartService';
 import { getCustomerAddresses, type CustomerAddress } from '../../../services/customerAddresses';
 import { createCustomerOneTimeOrder } from '../../../services/orders/orderService';
+import { CUSTOMER_PAYMENT_METHODS, type CustomerPaymentMethod, isPaymentGatewayConfigured } from '../../../services/payments/paymentService';
 import { getDeliverySlots, type DeliverySlot } from '../../../services/orders/deliverySlotService';
 
-const PAYMENT_METHODS = ['UPI', 'Card', 'Wallet'] as const;
-type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+const PAYMENT_METHODS = CUSTOMER_PAYMENT_METHODS;
+type PaymentMethod = CustomerPaymentMethod;
 
 function formatAddress(address: CustomerAddress) {
   return [address.addressLine1, address.addressLine2, address.landmark, address.city, address.state, address.pincode]
@@ -167,6 +168,7 @@ export default function Checkout() {
 
       <Text style={styles.heading}>Payment Method</Text>
       <View style={styles.card}>
+        {!isPaymentGatewayConfigured() ? <Text style={styles.paymentNotice}>Online payment gateway is not connected yet. Your order will be created with Payment Pending; the payment result must be recorded by the trusted payment flow.</Text> : null}
         {PAYMENT_METHODS.map((method) => {
           const selected = paymentMethod === method;
           return (
@@ -209,6 +211,7 @@ const styles = {
   selectedText: { color: colors.greenDark, fontWeight: '900' as const },
   paymentRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   paymentText: { color: colors.ink, fontWeight: '800' as const },
+  paymentNotice: { color: colors.inkSoft, backgroundColor: '#f7f7f2', borderRadius: 10, padding: 10, marginBottom: 4, lineHeight: 18 },
   line: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   saving: { color: colors.greenDark, fontWeight: '800' as const },
   totalLabel: { fontWeight: '900' as const, color: colors.ink },

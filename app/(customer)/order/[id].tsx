@@ -5,6 +5,7 @@ import { Button, Header, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { getCustomerOrder, type CustomerOrder } from '../../../services/orders/orderService';
 import { useAppStore } from '../../../store/appStore';
+import { paymentStatusMessage, prettyPaymentStatus } from '../../../services/payments/paymentService';
 
 function money(value: unknown) {
   const n = Number(value ?? 0);
@@ -88,7 +89,9 @@ export default function OrderDetail() {
       {discount > 0 ? <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 7 }}><Text style={{ color: colors.greenDark }}>Discount</Text><Text style={{ color: colors.greenDark }}>−{money(discount)}</Text></View> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 7 }}><Text style={{ color: colors.inkSoft }}>Delivery</Text><Text>{money(delivery)}</Text></View>
       <View style={{ borderTopWidth: 1, borderTopColor: colors.lineSoft, paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ fontSize: 16, fontWeight: '900', color: colors.ink }}>Total</Text><Text style={{ fontSize: 17, fontWeight: '900', color: colors.ink }}>{money(total)}</Text></View>
-      <Text style={{ color: colors.inkSoft, marginTop: 10 }}>Payment: {prettyStatus(order.paymentMethod)} · {prettyStatus(order.paymentStatus)}</Text>
+      <Text style={{ color: colors.inkSoft, marginTop: 10 }}>Payment: {prettyStatus(order.paymentMethod)} · {prettyPaymentStatus(order.paymentStatus)}</Text>
+      <Text style={{ color: colors.inkSoft, marginTop: 5 }}>{paymentStatusMessage(order.paymentStatus)}</Text>
+      {order.transactionId ? <Text style={{ color: colors.inkSoft, marginTop: 5 }}>Transaction: {order.transactionId}</Text> : null} 
     </View>
 
     <View style={{ marginTop: 16, marginBottom: 18 }}><Button title="Back to My Orders" onPress={() => router.replace('/(customer)/(tabs)/orders')} /></View>

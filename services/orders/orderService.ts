@@ -3,6 +3,7 @@ import { db } from '../core/firebaseClient';
 import { normalizeIndianMobile } from '../clientOnboarding';
 import type { CartItem } from '../cart/cartService';
 import type { CustomerAddress } from '../customerAddresses';
+import type { PaymentTransaction } from '../payments/paymentService';
 
 export type CreateCustomerOrderInput = { mobile: string; items: CartItem[]; address: CustomerAddress; paymentMethod: string; deliverySlot?: { id: string; name?: string; date?: string; startTime?: string; endTime?: string; deliveryCharge?: number } };
 
@@ -81,6 +82,7 @@ export type CustomerOrder = {
   packingStatus?: string;
   createdAt?: unknown;
   scheduledDeliveryDate?: string;
+  paymentTransactions?: PaymentTransaction[];
 };
 
 function timestampMillis(value: unknown) {
