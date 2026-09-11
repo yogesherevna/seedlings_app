@@ -142,7 +142,7 @@ export default function Checkout() {
       {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
       {validationError ? <Text style={styles.error}>{validationError}</Text> : null}
       <View style={{ marginBottom: 18 }}>
-        <Button title={placingOrder ? "Placing Order…" : "Place Order"} onPress={validateCheckout} disabled={placingOrder} />
+        <Button title={placingOrder ? "Placing Order…" : "Place Order"} onPress={placingOrder ? () => {} : validateCheckout} />
       </View>
     </Screen>
   );
