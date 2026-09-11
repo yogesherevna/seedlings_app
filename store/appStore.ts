@@ -1,14 +1,13 @@
 import { create } from 'zustand';
 import { logoutCustomer, persistCustomerSession, restoreCustomerSession } from '../services/auth/customerSession';
-import type { Product } from '../data/products';
+import type { Product } from '../services/products/productService';
 import {
   clearPersistedCart,
   loadCart,
   removeCartItem,
   upsertCartItem,
 } from '../services/cart/cartPersistence';
-
-type CartItem = Product & { quantity: number; selectedWeight: string };
+import type { CartItem } from '../services/cart/cartService';
 
 type State = {
   mobile: string;
