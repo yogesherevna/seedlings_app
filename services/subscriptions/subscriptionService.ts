@@ -1,6 +1,8 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '../core/firebaseClient';
 import { normalizeIndianMobile } from '../clientOnboarding';
+import { app } from '../core/firebaseClient';
 
 export type SubscriptionPlan = { id:string; name:string; frequency:string; price:number; deliveriesPerTerm?:number; active:boolean; sortOrder:number };
 export type CustomerSubscription = { id:string; subscriptionNumber?:string; customerId:string; productId?:string; productName?:string; sellingOptionLabel?:string; quantity?:number; frequency?:string; status?:string; totalDeliveries?:number; deliveriesGenerated?:number; remainingDeliveries?:number; nextDeliveryDate?:string; deliveryAddress?:Record<string,unknown>; startDate?:string; endDate?:string; price?:number; planId?:string; createdAt?:unknown };
@@ -17,3 +19,44 @@ export async function getCustomerSubscriptions(input:string):Promise<CustomerSub
 }
 export function isSubscriptionEligible(product:{subscriptionPurchase?:boolean;active?:boolean}){return product.active===true&&product.subscriptionPurchase===true}
 export function prettySubscriptionStatus(status?:string){const v=String(status??'').trim().toLowerCase();return v?v.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()):'Unknown'}
+
+
+export type CreateSubscriptionInput = {
+  mobile: string;
+  productId: string;
+  planId: string;
+  addressId: string;
+  quantity: number;
+  startDate: string;
+};
+
+export type SubscriptionAction = 'pause' | 'resume' | 'cancel';
+
+const subscriptionFunctions = getFunctions(app);
+
+/**
+ * Trusted mutation boundary for customer subscriptions.
+ * The mobile client never writes subscription documents directly.
+ * The callable functions must validate customer ownership, product/plan eligibility,
+ * address ownership, pricing and allowed status transitions on the server.
+ */
+export async function createCustomerSubscription(input: CreateSubscriptionInput) {
+  const mobile = normalizeIndianMobile(input.mobile);
+  if (!mobile) throw new Error('Invalid customer mobile number.');
+  if (!input.productId || !input.planId || !input.addressId) throw new Error('Choose a product, plan and delivery address.');
+  const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
+  if (!input.startDate) throw new Error('Choose a subscription start date.');
+
+  const fn = httpsCallable(subscriptionFunctions, 'createCustomerSubscription');
+  const result = await fn({ ...input, mobile, quantity });
+  return result.data as { subscriptionId?: string; subscriptionNumber?: string };
+}
+
+export async function updateCustomerSubscription(input: { mobile: string; subscriptionId: string; action: SubscriptionAction }) {
+  const mobile = normalizeIndianMobile(input.mobile);
+  if (!mobile) throw new Error('Invalid customer mobile number.');
+  if (!input.subscriptionId) throw new Error('Subscription is required.');
+  const fn = httpsCallable(subscriptionFunctions, 'updateCustomerSubscription');
+  const result = await fn({ ...input, mobile });
+  return result.data as { subscriptionId?: string; status?: string };
+}
