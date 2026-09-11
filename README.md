@@ -66,3 +66,7 @@ Phase 16: Customer Subscription Delivery Calendar
 
 ## Phase 18
 Customer notifications are now read from the existing `notifications` collection. See `README_PHASE18_CUSTOMER_NOTIFICATIONS.md`.
+
+
+## Phase 22
+See `README_PHASE22_WEB_OTP_FIX.md` for the Expo Web local persistence and OTP input fix.
