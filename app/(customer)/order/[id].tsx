@@ -5,7 +5,7 @@ import { Button, Header, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { getCustomerOrder, type CustomerOrder } from '../../../services/orders/orderService';
 import { useAppStore } from '../../../store/appStore';
-import { paymentStatusMessage, prettyPaymentStatus } from '../../../services/payments/paymentService';
+import { paymentStatusMessage, prettyPaymentStatus, type PaymentTransaction } from '../../../services/payments/paymentService';
 
 function money(value: unknown) {
   const n = Number(value ?? 0);
@@ -50,6 +50,7 @@ export default function OrderDetail() {
   const total = order?.totalAmount ?? order?.total ?? 0;
   const delivery = order?.deliveryCharge ?? order?.deliveryFee ?? 0;
   const discount = order?.discountTotal ?? order?.discount ?? 0;
+  const transactions: PaymentTransaction[] = Array.isArray(order?.paymentTransactions) ? order.paymentTransactions : [];
 
   if (loading) return <Screen><Header title="Order Details" onBack={() => router.back()} /><View style={{ paddingTop: 40, alignItems: 'center' }}><ActivityIndicator size="large" color={colors.green} /><Text style={{ color: colors.inkSoft, marginTop: 12 }}>Loading order…</Text></View></Screen>;
   if (error || !order) return <Screen><Header title="Order Details" onBack={() => router.back()} /><View style={{ paddingTop: 35 }}><Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>{error || 'Order not found.'}</Text><Text style={{ color: colors.inkSoft, marginTop: 8, marginBottom: 18 }}>Only your own customer orders can be viewed here.</Text><Button title="Back to My Orders" onPress={() => router.replace('/(customer)/(tabs)/orders')} /></View></Screen>;
@@ -91,7 +92,23 @@ export default function OrderDetail() {
       <View style={{ borderTopWidth: 1, borderTopColor: colors.lineSoft, paddingTop: 10, flexDirection: 'row', justifyContent: 'space-between' }}><Text style={{ fontSize: 16, fontWeight: '900', color: colors.ink }}>Total</Text><Text style={{ fontSize: 17, fontWeight: '900', color: colors.ink }}>{money(total)}</Text></View>
       <Text style={{ color: colors.inkSoft, marginTop: 10 }}>Payment: {prettyStatus(order.paymentMethod)} · {prettyPaymentStatus(order.paymentStatus)}</Text>
       <Text style={{ color: colors.inkSoft, marginTop: 5 }}>{paymentStatusMessage(order.paymentStatus)}</Text>
-      {order.transactionId ? <Text style={{ color: colors.inkSoft, marginTop: 5 }}>Transaction: {order.transactionId}</Text> : null} 
+      {order.transactionId ? <Text style={{ color: colors.inkSoft, marginTop: 5 }}>Transaction: {order.transactionId}</Text> : null}
+      {transactions.length > 0 ? (
+        <View style={{ marginTop: 14, borderTopWidth: 1, borderTopColor: colors.lineSoft, paddingTop: 12 }}>
+          <Text style={{ fontWeight: '900', color: colors.ink, marginBottom: 8 }}>Payment Transactions</Text>
+          {transactions.map((transaction, index) => (
+            <View key={transaction.id ?? transaction.transactionId ?? `transaction-${index}`} style={{ paddingVertical: 8, borderBottomWidth: index < transactions.length - 1 ? 1 : 0, borderBottomColor: colors.lineSoft }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+                <Text style={{ fontWeight: '800', color: colors.ink }}>{transaction.method || order.paymentMethod || 'Payment'}</Text>
+                {transaction.amount != null ? <Text style={{ fontWeight: '900', color: colors.ink }}>{money(transaction.amount)}</Text> : null}
+              </View>
+              <Text style={{ color: colors.inkSoft, marginTop: 3 }}>{prettyPaymentStatus(transaction.status)}</Text>
+              {transaction.transactionId ? <Text style={{ color: colors.inkSoft, marginTop: 3 }}>Transaction: {transaction.transactionId}</Text> : null}
+              {transaction.createdAt ? <Text style={{ color: colors.inkSoft, marginTop: 3 }}>{formatDate(transaction.createdAt)}</Text> : null}
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
 
     <View style={{ marginTop: 16, marginBottom: 18 }}><Button title="Back to My Orders" onPress={() => router.replace('/(customer)/(tabs)/orders')} /></View>
