@@ -26,11 +26,13 @@ export async function createCustomerOneTimeOrder(input: CreateCustomerOrderInput
   const customer = customerSnapshot.data();
   if (customer.status === 'blocked') throw new Error('Your customer account is blocked.');
   const saved = Array.isArray(customer.addresses) ? customer.addresses : [];
-  if (!saved.some((a) => String(a?.id ?? '') === input.address.id)) throw new Error('Selected delivery address is no longer available.');
+  const selectedAddress = saved.find((a) => String(a?.id ?? '') === input.address.id);
+  if (!selectedAddress) throw new Error('Selected delivery address is no longer available.');
 
   const productDocs = await getDocs(collection(db, 'salesProducts'));
   const products = new Map(productDocs.docs.map((s) => [s.id, { id: s.id, ...s.data() }]));
   const deliveryDate = nextWeekSaturday();
+
   const availabilityResults = await Promise.all(input.items.map(async (item) => {
     const product = products.get(item.id);
     if (!product || product.active !== true) throw new Error(`${item.name} is no longer available.`);
@@ -43,91 +45,79 @@ export async function createCustomerOneTimeOrder(input: CreateCustomerOrderInput
   const orderItems = input.items.map((item) => {
     const product = products.get(item.id);
     if (!product || product.active !== true) throw new Error(`${item.name} is no longer available.`);
-    if (typeof product.sellingPrice !== 'number') throw new Error(`Price unavailable for ${item.name}.`);
-    const unitMrp = typeof product.mrp === 'number' && product.mrp > 0 ? product.mrp : product.sellingPrice;
+    if (product.oneTimePurchase !== true) throw new Error(`${item.name} is not available for one-time purchase.`);
+    const unitPrice = Number(product.sellingPrice);
+    const mrp = Number(product.mrp ?? unitPrice);
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) throw new Error(`Price unavailable for ${item.name}.`);
+    if (!Number.isFinite(mrp) || mrp < unitPrice) throw new Error(`Invalid MRP for ${item.name}.`);
     const quantity = Math.max(1, Math.floor(item.quantity));
     const components = Array.isArray(product.components) ? product.components : [];
     const weightGrams = components.reduce((sum, component) => sum + Number(component?.quantityGrams || 0), 0);
     return {
-      productId: item.id,
-      productName: String(product.name ?? item.name),
-      productSku: typeof product.sku === 'string' ? product.sku : undefined,
-      weightGrams: weightGrams || undefined,
-      weightLabel: item.selectedWeight,
+      salableProductId: product.id,
+      salableProductSku: typeof product.sku === 'string' ? product.sku.trim() : '',
+      salableProductType: product.type === 'multiple' ? 'multiple' : 'single',
+      productId: product.id,
+      productName: String(product.name ?? item.name).trim(),
+      productSlug: typeof product.slug === 'string' ? product.slug.trim() : '',
+      sellingOptionId: product.id,
+      sellingOptionLabel: product.type === 'multiple' ? 'Combo' : (weightGrams ? `${weightGrams}g` : 'Single'),
+      weightGrams,
       quantity,
-      unitMrp,
-      mrp: unitMrp * quantity,
-      unitPrice: product.sellingPrice,
-      price: product.sellingPrice * quantity,
-      discount: Math.max(0, (unitMrp - product.sellingPrice) * quantity),
-      imageUrl: typeof product.imageUrl === 'string' ? product.imageUrl : undefined,
+      mrp,
+      unitPrice,
+      lineTotal: unitPrice * quantity,
+      imageUrl: typeof product.imageUrl === 'string' ? product.imageUrl.trim() : '',
     };
   });
 
-  const mrpTotal = orderItems.reduce((s, i) => s + i.mrp, 0);
-  const subtotal = orderItems.reduce((s, i) => s + i.price, 0);
-  const discount = Math.max(0, mrpTotal - subtotal);
+  const mrpSubtotal = orderItems.reduce((sum, item) => sum + Number(item.mrp) * Number(item.quantity), 0);
+  const subtotal = orderItems.reduce((sum, item) => sum + Number(item.lineTotal), 0);
+  const productSavings = Math.max(0, mrpSubtotal - subtotal);
   const charge = await getActiveOneTimeDeliveryCharge();
   const deliveryFee = charge?.amount ?? 0;
   const total = subtotal + deliveryFee;
-  const addressSnapshot = {
-    id: input.address.id,
-    label: input.address.label ?? 'Home',
-    name: input.address.name ?? '',
-    mobileNumber: input.address.mobileNumber ?? mobile,
-    addressLine1: input.address.addressLine1 ?? '',
-    addressLine2: input.address.addressLine2 ?? '',
-    landmark: input.address.landmark ?? '',
-    city: input.address.city ?? '',
-    state: input.address.state ?? '',
-    pincode: input.address.pincode ?? '',
-  };
-  const orderNumber = createOrderNumber();
   const requestedAvailabilityGrams = availabilityResults.reduce((sum, result) => sum + result.requestedGrams, 0);
   const availableAvailabilityGrams = availabilityResults.reduce((sum, result) => sum + result.availableGrams, 0);
   const shortageAvailabilityGrams = availabilityResults.reduce((sum, result) => sum + result.shortageGrams, 0);
 
-  const orderRef = await addDoc(collection(db, 'orders'), stripUndefined({
-    orderNumber,
+  const order = stripUndefined({
+    orderNumber: createOrderNumber(),
     customerId: mobile,
-    customerName: typeof customer.name === 'string' ? customer.name : addressSnapshot.name,
-    customerMobile: mobile,
+    customerName: typeof customer.name === 'string' ? customer.name.trim() : '',
+    customerMobile: typeof customer.mobileNumber === 'string' ? customer.mobileNumber.trim() : mobile,
     items: orderItems,
     subtotal,
     deliveryFee,
-    discount,
+    discount: productSavings,
     total,
-    mrpTotal,
-    discountTotal: discount,
-    deliveryCharge: deliveryFee,
-    walletApplied: 0,
-    totalAmount: total,
     currency: 'INR',
     paymentStatus: 'pending',
     paymentMethod: 'online',
-    status: 'confirmed',
-    deliveryStatus: 'pending',
-    deliveryAddress: addressSnapshot,
-    deliveryAddressSnapshot: addressSnapshot,
+    status: 'pending_payment',
+    deliveryAddress: selectedAddress,
     scheduledDeliveryDate: deliveryDate,
     deliveryDate,
     deliverySlot: input.deliverySlot.trim(),
+    notes: '',
     orderType: 'one_time',
+    subscriptionId: null,
+    deliveryChargeId: charge?.id || '',
+    deliveryChargeName: charge?.name || '',
+    deliveryChargeSnapshot: deliveryFee,
     packingStatus: 'pending',
-    statusHistory: [{ status: 'confirmed', changedAt: new Date().toISOString(), source: 'customer_mobile' }],
     requiresCustomerContact: input.shortageDecision === 'contact',
     availabilityRequestedGrams: requestedAvailabilityGrams,
     availabilityAvailableGrams: availableAvailabilityGrams,
     availabilityShortageGrams: shortageAvailabilityGrams,
     carryForwardQuantityGrams: 0,
     availabilityDecision: input.shortageDecision || 'continue',
-    deliveryChargeId: charge?.id || '',
-    deliveryChargeName: charge?.name || '',
-    deliveryChargeSnapshot: deliveryFee,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  }));
-  return { id: orderRef.id, orderNumber, total };
+  });
+
+  const orderRef = await addDoc(collection(db, 'orders'), order);
+  return { id: orderRef.id, orderNumber: order.orderNumber, paymentStatus: order.paymentStatus, total };
 }
 
 

@@ -28,6 +28,7 @@ export type CreateSubscriptionInput = {
   addressId: string;
   quantity: number;
   startDate: string;
+  shortageDecision?: 'continue' | 'contact';
 };
 
 export type SubscriptionAction = 'pause' | 'resume' | 'cancel';
