@@ -6,6 +6,7 @@ import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import { getCartTotals } from '../../../services/cart/cartService';
 import { getCustomerAddresses, type CustomerAddress } from '../../../services/customerAddresses';
+import { createCustomerOneTimeOrder } from '../../../services/orders/orderService';
 
 const PAYMENT_METHODS = ['UPI', 'Card', 'Wallet'] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -26,6 +27,7 @@ export default function Checkout() {
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [addressError, setAddressError] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [placingOrder, setPlacingOrder] = useState(false);
 
   const loadAddresses = useCallback(async () => {
     if (!mobile) return;
@@ -63,11 +65,17 @@ export default function Checkout() {
       setValidationError('Please select a delivery address.');
       return;
     }
-    // Payment integration and order creation are intentionally handled in Phase 9.
-    router.push({
-      pathname: '/(customer)/checkout/success',
-      params: { preview: 'true', paymentMethod },
-    });
+    if (!mobile) { setValidationError('Customer session not found. Please log in again.'); return; }
+    setPlacingOrder(true);
+    try {
+      const order = await createCustomerOneTimeOrder({ mobile, items: cart, address: selectedAddress, paymentMethod });
+      useAppStore.getState().clearCart();
+      router.replace({ pathname: '/(customer)/checkout/success', params: { orderId: order.id, orderNumber: order.orderNumber, total: String(order.total), paymentMethod } });
+    } catch (error) {
+      setValidationError(error instanceof Error ? error.message : 'Unable to place your order. Please try again.');
+    } finally {
+      setPlacingOrder(false);
+    }
   };
 
   return (
@@ -134,7 +142,7 @@ export default function Checkout() {
       {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
       {validationError ? <Text style={styles.error}>{validationError}</Text> : null}
       <View style={{ marginBottom: 18 }}>
-        <Button title="Continue" onPress={validateCheckout} />
+        <Button title={placingOrder ? "Placing Order…" : "Place Order"} onPress={validateCheckout} disabled={placingOrder} />
       </View>
     </Screen>
   );

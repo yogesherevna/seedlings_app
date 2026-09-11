@@ -4,7 +4,7 @@ import { Button, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 
 export default function Success() {
-  const { preview } = useLocalSearchParams<{ preview?: string }>();
+  const { preview, orderNumber, total } = useLocalSearchParams<{ preview?: string; orderNumber?: string; total?: string }>();
   const isPreview = preview === 'true';
 
   return (
@@ -16,10 +16,11 @@ export default function Success() {
         </View>
         <Text style={{ fontSize: 25, fontWeight: '900', color: colors.ink, marginTop: 16 }}>{isPreview ? 'Checkout Ready' : 'Order Placed!'}</Text>
         <Text style={{ color: colors.inkSoft, textAlign: 'center', marginTop: 6 }}>
-          {isPreview ? 'Your delivery address, payment method and order summary are validated. Order creation will be enabled in the next phase.' : 'Your order has been placed successfully.'}
+          {isPreview ? 'Your checkout details are validated.' : `Your order ${orderNumber ? `#${orderNumber} ` : ''}has been placed successfully.`}
         </Text>
+        {!isPreview && total ? <Text style={{ marginTop: 10, fontSize: 18, fontWeight: '900', color: colors.ink }}>Total: ₹{total}</Text> : null}
         <View style={{ width: '100%', marginTop: 26 }}>
-          <Button title="Back to Cart" onPress={() => router.replace('/(customer)/(tabs)/cart')} />
+          <Button title="View My Orders" onPress={() => router.replace('/(customer)/(tabs)/orders')} />
           <View style={{ height: 10 }} />
           <Button title="Continue Shopping" secondary onPress={() => router.replace('/(customer)/(tabs)/products')} />
         </View>
