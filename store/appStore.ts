@@ -7,7 +7,7 @@ import {
   removeCartItem,
   upsertCartItem,
 } from '../services/cart/cartPersistence';
-import type { CartItem } from '../services/cart/cartService';
+import type { CartItem, PurchaseMode } from '../services/cart/cartService';
 
 type State = {
   mobile: string;
@@ -24,6 +24,9 @@ type State = {
   removeFromCart: (id: string, weight?: string) => void;
   changeQuantity: (id: string, delta: number, weight?: string) => void;
   clearCart: () => void;
+  refreshCartProducts: (products: Product[]) => void;
+  setCartPurchaseMode: (productId: string, mode: PurchaseMode) => void;
+  setCartSubscriptionPlan: (productId: string, planId: string) => void;
 };
 
 export const useAppStore = create<State>((set, get) => ({
@@ -64,57 +67,53 @@ export const useAppStore = create<State>((set, get) => ({
   },
   addToCart: (product, weight) => {
     const selectedWeight = weight ?? product.defaultWeight;
-    const existing = get().cart.find(
-      (item) => item.id === product.id && item.selectedWeight === selectedWeight,
-    );
-
+    const existing = get().cart.find((item) => item.id === product.id);
     if (existing) {
-      const updated = get().cart.map((item) =>
-        item.id === product.id && item.selectedWeight === selectedWeight
-          ? { ...item, quantity: item.quantity + 1 }
-          : item,
-      );
+      const updated = get().cart.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
       set({ cart: updated });
-      const next = updated.find(
-        (item) => item.id === product.id && item.selectedWeight === selectedWeight,
-      );
+      const next = updated.find((item) => item.id === product.id);
       if (next) upsertCartItem(next);
       return;
     }
-
-    const item: CartItem = { ...product, quantity: 1, selectedWeight };
+    const item: CartItem = { ...product, quantity: 1, selectedWeight, purchaseMode: 'one-time' };
     set((state) => ({ cart: [...state.cart, item] }));
     upsertCartItem(item);
   },
-  removeFromCart: (id, weight) => {
-    const existing = get().cart.find(
-      (item) => item.id === id && (weight ? item.selectedWeight === weight : true),
-    );
+  removeFromCart: (id) => {
+    const existing = get().cart.find((item) => item.id === id);
     if (!existing) return;
-    set((state) => ({
-      cart: state.cart.filter(
-        (item) => !(item.id === id && item.selectedWeight === existing.selectedWeight),
-      ),
-    }));
-    removeCartItem(id, existing.selectedWeight);
+    set((state) => ({ cart: state.cart.filter((item) => item.id !== id) }));
+    removeCartItem(id);
   },
-  changeQuantity: (id, delta, weight) => {
-    const existing = get().cart.find(
-      (item) => item.id === id && (weight ? item.selectedWeight === weight : true),
-    );
+  changeQuantity: (id, delta) => {
+    const existing = get().cart.find((item) => item.id === id);
     if (!existing) return;
-
     const nextQuantity = Math.max(1, existing.quantity + delta);
-    const updated = get().cart.map((item) =>
-      item.id === id && item.selectedWeight === existing.selectedWeight
-        ? { ...item, quantity: nextQuantity }
-        : item,
-    );
+    const updated = get().cart.map((item) => item.id === id ? { ...item, quantity: nextQuantity } : item);
     set({ cart: updated });
-    const next = updated.find(
-      (item) => item.id === id && item.selectedWeight === existing.selectedWeight,
-    );
+    const next = updated.find((item) => item.id === id);
     if (next) upsertCartItem(next);
+  },
+  refreshCartProducts: (products) => {
+    const byId = new Map(products.map((product) => [product.id, product]));
+    const updated = get().cart.map((item) => {
+      const product = byId.get(item.id);
+      return product ? { ...product, quantity: item.quantity, selectedWeight: product.defaultWeight, purchaseMode: item.purchaseMode, ...(item.subscriptionPlanId ? { subscriptionPlanId: item.subscriptionPlanId } : {}) } : item;
+    });
+    set({ cart: updated });
+    for (const item of updated) upsertCartItem(item);
+  },
+  setCartPurchaseMode: (productId, mode) => {
+    const updated = get().cart.map((item) => item.id === productId ? { ...item, purchaseMode: mode, ...(mode === 'one-time' ? { subscriptionPlanId: undefined } : {}) } : item);
+    set({ cart: updated });
+    const item = updated.find((x) => x.id === productId);
+    if (item) upsertCartItem(item);
+  },
+  setCartSubscriptionPlan: (productId, planId) => {
+    const updated = get().cart.map((item) => item.id === productId ? { ...item, subscriptionPlanId: planId || undefined } : item);
+    set({ cart: updated });
+    const item = updated.find((x) => x.id === productId);
+    if (item) upsertCartItem(item);
   },
   clearCart: () => {
     clearPersistedCart();

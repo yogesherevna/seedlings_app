@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ProductCard, Screen, SearchBar } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
-import { getProducts } from '../../../services/products/productService';
+import { getProducts, refreshProducts } from '../../../services/products/productService';
 import type { Product } from '../../../services/products/productService';
 
 export default function Products() {
@@ -20,6 +20,9 @@ export default function Products() {
       if (forceRefresh) setRefreshing(true); else setLoading(true);
       const result = await getProducts({ forceRefresh });
       setProducts(result.products);
+      if (!forceRefresh) {
+        void refreshProducts().then((fresh) => setProducts(fresh)).catch(() => {});
+      }
     } catch {
       setError('Unable to load products. Please try again.');
     } finally {

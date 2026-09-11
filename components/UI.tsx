@@ -3,7 +3,6 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '../constants/theme';
 import type { Product } from '../services/products/productService';
-import { useAppStore } from '../store/appStore';
 
 export function Screen({ children, scroll = true }: { children: React.ReactNode; scroll?: boolean }) {
   const content = <View style={styles.screen}>{children}</View>;
@@ -55,16 +54,13 @@ export function Button({ title, onPress, secondary = false, orange = false }: { 
 }
 
 export function ProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
-  const addToCart = useAppStore((s) => s.addToCart);
   const source = product.imageUrl?.startsWith('http') ? { uri: product.imageUrl } : require('../assets/products/placeholder.png');
   return (
     <Pressable onPress={onPress} style={styles.productCard}>
       <View style={styles.productImageWrap}><Image source={source} style={styles.productImage} resizeMode="contain" /></View>
       <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
-      <View style={styles.chipsRow}><Text style={styles.chip}>{product.defaultWeight}</Text></View>
       <View style={styles.priceRow}>
-        <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}><Text style={styles.price}>₹{product.price}</Text><Text style={styles.mrp}>{product.mrp ? `₹${product.mrp}` : ''}</Text></View>
-        <Pressable onPress={() => addToCart(product)} style={styles.addButton}><Text style={styles.addText}>+</Text></Pressable>
+        <View style={{ flexDirection:'row', alignItems:'center', gap:6, flexWrap:'wrap', flex:1 }}><Text style={styles.price}>₹{product.price}</Text>{product.mrp && product.mrp > product.price ? <Text style={styles.mrp}>₹{product.mrp}</Text> : null}</View>
       </View>
     </Pressable>
   );

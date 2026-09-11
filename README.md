@@ -70,3 +70,7 @@ Customer notifications are now read from the existing `notifications` collection
 
 ## Phase 22
 See `README_PHASE22_WEB_OTP_FIX.md` for the Expo Web local persistence and OTP input fix.
+
+## Phase 23 — Product + Cart Parity
+
+See `README_PHASE23_PRODUCT_CART_PARITY.md`. This phase aligns the Mobile Customer catalogue, product detail and cart to the actual Website Phase 19 behaviour and removes the Mobile-only salable-product family/weight-option abstraction.
