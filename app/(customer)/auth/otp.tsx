@@ -44,7 +44,7 @@ export default function OTP() {
     try {
       setVerifying(true);
       await ensureClientOnboarding(mobile);
-      login();
+      login(mobile);
       router.replace('/(customer)/(tabs)');
     } catch (error) {
       console.error('Customer verification failed:', error);

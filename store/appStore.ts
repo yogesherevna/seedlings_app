@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { logoutCustomer, persistCustomerSession, restoreCustomerSession } from '../services/auth/customerSession';
 import type { Product } from '../data/products';
 import {
   clearPersistedCart,
@@ -14,10 +15,12 @@ type State = {
   authenticated: boolean;
   cart: CartItem[];
   cartHydrated: boolean;
+  sessionHydrated: boolean;
   setMobile: (mobile: string) => void;
-  login: () => void;
-  logout: () => void;
+  login: (mobile?: string) => void;
+  logout: () => Promise<void>;
   hydrateCart: () => void;
+  hydrateSession: () => Promise<void>;
   addToCart: (product: Product, weight?: string) => void;
   removeFromCart: (id: string, weight?: string) => void;
   changeQuantity: (id: string, delta: number, weight?: string) => void;
@@ -29,11 +32,28 @@ export const useAppStore = create<State>((set, get) => ({
   authenticated: false,
   cart: [],
   cartHydrated: false,
+  sessionHydrated: false,
   setMobile: (mobile) => set({ mobile }),
-  login: () => set({ authenticated: true }),
-  logout: () => {
+  login: (mobile) => {
+    const customerMobile = mobile ?? get().mobile;
+    persistCustomerSession(customerMobile);
+    set({ mobile: customerMobile, authenticated: true });
+  },
+  logout: async () => {
     clearPersistedCart();
-    set({ authenticated: false, cart: [] });
+    try {
+      await logoutCustomer();
+    } finally {
+      set({ mobile: '', authenticated: false, cart: [] });
+    }
+  },
+  hydrateSession: async () => {
+    try {
+      const mobile = await restoreCustomerSession();
+      set({ mobile: mobile ?? '', authenticated: Boolean(mobile), sessionHydrated: true });
+    } catch {
+      set({ mobile: '', authenticated: false, sessionHydrated: true });
+    }
   },
   hydrateCart: () => {
     try {

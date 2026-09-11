@@ -7,10 +7,12 @@ import { useAppStore } from '../store/appStore';
 
 export default function RootLayout() {
   const hydrateCart = useAppStore((state) => state.hydrateCart);
+  const hydrateSession = useAppStore((state) => state.hydrateSession);
 
   useEffect(() => {
     hydrateCart();
-  }, [hydrateCart]);
+    void hydrateSession();
+  }, [hydrateCart, hydrateSession]);
 
   return (
     <>

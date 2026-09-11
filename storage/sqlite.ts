@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'seedlings-mobile.db';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 let database: SQLite.SQLiteDatabase | null = null;
 

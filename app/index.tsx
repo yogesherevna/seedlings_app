@@ -6,10 +6,12 @@ import { useAppStore } from '../store/appStore';
 
 export default function Splash() {
   const authenticated = useAppStore((s) => s.authenticated);
+  const sessionHydrated = useAppStore((s) => s.sessionHydrated);
   useEffect(() => {
-    const t = setTimeout(() => router.replace(authenticated ? '/(customer)/(tabs)' : '/(customer)/auth/login'), 1700);
+    if (!sessionHydrated) return;
+    const t = setTimeout(() => router.replace(authenticated ? '/(customer)/(tabs)' : '/(customer)/auth/login'), 700);
     return () => clearTimeout(t);
-  }, [authenticated]);
+  }, [authenticated, sessionHydrated]);
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
