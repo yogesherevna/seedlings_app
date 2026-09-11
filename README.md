@@ -63,3 +63,5 @@ For a production Android build:
 ## Important
 
 Do not add NestJS, PostgreSQL, Prisma, or another API backend. The confirmed architecture for the project is Firebase-only. Firebase Auth, Firestore, Storage and Cloud Functions will be connected in the next development phase.
+
+- Phase 11: Customer delivery slot selection using existing deliverySlots collection.

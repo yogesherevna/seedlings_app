@@ -7,6 +7,7 @@ import { useAppStore } from '../../../store/appStore';
 import { getCartTotals } from '../../../services/cart/cartService';
 import { getCustomerAddresses, type CustomerAddress } from '../../../services/customerAddresses';
 import { createCustomerOneTimeOrder } from '../../../services/orders/orderService';
+import { getDeliverySlots, type DeliverySlot } from '../../../services/orders/deliverySlotService';
 
 const PAYMENT_METHODS = ['UPI', 'Card', 'Wallet'] as const;
 type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -24,10 +25,30 @@ export default function Checkout() {
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
+  const [deliverySlots, setDeliverySlots] = useState<DeliverySlot[]>([]);
+  const [selectedSlotId, setSelectedSlotId] = useState('');
+  const [loadingSlots, setLoadingSlots] = useState(true);
+  const [slotError, setSlotError] = useState('');
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   const [addressError, setAddressError] = useState('');
   const [validationError, setValidationError] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
+
+  const loadSlots = useCallback(async () => {
+    setLoadingSlots(true);
+    setSlotError('');
+    try {
+      const result = await getDeliverySlots();
+      setDeliverySlots(result);
+      setSelectedSlotId((current) => result.some((slot) => slot.id === current) ? current : result[0]?.id ?? '');
+    } catch (error) {
+      setDeliverySlots([]);
+      setSelectedSlotId('');
+      setSlotError(error instanceof Error ? error.message : 'Unable to load delivery slots.');
+    } finally {
+      setLoadingSlots(false);
+    }
+  }, []);
 
   const loadAddresses = useCallback(async () => {
     if (!mobile) return;
@@ -46,16 +67,21 @@ export default function Checkout() {
 
   useEffect(() => {
     void loadAddresses();
-  }, [loadAddresses]);
+    void loadSlots();
+  }, [loadAddresses, loadSlots]);
 
   useFocusEffect(useCallback(() => {
     void loadAddresses();
-  }, [loadAddresses]));
+    void loadSlots();
+  }, [loadAddresses, loadSlots]));
 
   const selectedAddress = addresses.find((item) => item.id === selectedAddressId);
+  const selectedSlot = deliverySlots.find((slot) => slot.id === selectedSlotId);
+  const deliveryFee = selectedSlot?.deliveryCharge ?? totals.delivery;
+  const checkoutTotal = totals.subtotal + deliveryFee;
   const canContinue = cart.length > 0 && Boolean(selectedAddress);
 
-  const validateCheckout = () => {
+  const validateCheckout = async () => {
     setValidationError('');
     if (cart.length === 0) {
       setValidationError('Your cart is empty.');
@@ -66,9 +92,10 @@ export default function Checkout() {
       return;
     }
     if (!mobile) { setValidationError('Customer session not found. Please log in again.'); return; }
+    if (deliverySlots.length > 0 && !selectedSlot) { setValidationError('Please select a delivery slot.'); return; }
     setPlacingOrder(true);
     try {
-      const order = await createCustomerOneTimeOrder({ mobile, items: cart, address: selectedAddress, paymentMethod });
+      const order = await createCustomerOneTimeOrder({ mobile, items: cart, address: selectedAddress, paymentMethod, deliverySlot: selectedSlot });
       useAppStore.getState().clearCart();
       router.replace({ pathname: '/(customer)/checkout/success', params: { orderId: order.id, orderNumber: order.orderNumber, total: String(order.total), paymentMethod } });
     } catch (error) {
@@ -111,11 +138,32 @@ export default function Checkout() {
         </>
       )}
 
-      <Text style={styles.heading}>Delivery</Text>
-      <View style={styles.card}>
-        <Text style={styles.bold}>Standard delivery</Text>
-        <Text style={styles.muted}>Delivery availability and charges are validated when the order is placed.</Text>
-      </View>
+      <Text style={styles.heading}>Delivery Slot</Text>
+      {loadingSlots ? (
+        <View style={styles.stateCard}><ActivityIndicator color={colors.greenDark} /><Text style={styles.muted}>Loading delivery slots…</Text></View>
+      ) : deliverySlots.length === 0 ? (
+        <View style={styles.card}>
+          <Text style={styles.bold}>Standard delivery</Text>
+          <Text style={styles.muted}>{slotError || 'No selectable delivery slots are configured yet. Standard delivery will be used.'}</Text>
+        </View>
+      ) : (
+        <View>
+          {deliverySlots.map((slot) => {
+            const selected = slot.id === selectedSlotId;
+            const timing = [slot.date, slot.startTime && slot.endTime ? `${slot.startTime}–${slot.endTime}` : slot.startTime || slot.endTime].filter(Boolean).join(' · ');
+            return (
+              <Pressable key={slot.id} onPress={() => { setSelectedSlotId(slot.id); setValidationError(''); }} style={[styles.card, selected && styles.selectedCard]}>
+                <View style={styles.addressHeader}>
+                  <Text style={styles.bold}>{slot.name}</Text>
+                  <Text style={selected ? styles.selectedMark : styles.radio}>{selected ? '●' : '○'}</Text>
+                </View>
+                {timing ? <Text style={styles.muted}>{timing}</Text> : null}
+                <Text style={styles.muted}>Delivery charge: ₹{slot.deliveryCharge ?? totals.delivery}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
       <Text style={styles.heading}>Payment Method</Text>
       <View style={styles.card}>
@@ -135,8 +183,8 @@ export default function Checkout() {
         <View style={styles.line}><Text style={styles.muted}>MRP</Text><Text style={styles.muted}>₹{totals.mrpSubtotal}</Text></View>
         <View style={styles.line}><Text style={styles.muted}>Subtotal</Text><Text style={styles.muted}>₹{totals.subtotal}</Text></View>
         {totals.savings > 0 ? <View style={styles.line}><Text style={styles.saving}>You save</Text><Text style={styles.saving}>−₹{totals.savings}</Text></View> : null}
-        <View style={styles.line}><Text style={styles.muted}>Delivery</Text><Text style={styles.muted}>₹{totals.delivery}</Text></View>
-        <View style={[styles.line, { borderBottomWidth: 0 }]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.total}>₹{totals.total}</Text></View>
+        <View style={styles.line}><Text style={styles.muted}>Delivery</Text><Text style={styles.muted}>₹{deliveryFee}</Text></View>
+        <View style={[styles.line, { borderBottomWidth: 0 }]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.total}>₹{checkoutTotal}</Text></View>
       </View>
 
       {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
