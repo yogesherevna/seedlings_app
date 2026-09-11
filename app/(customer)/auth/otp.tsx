@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { Logo, Button, Screen } from '../../../components/UI';
@@ -8,13 +8,16 @@ import { ensureClientOnboarding } from '../../../services/clientOnboarding';
 
 const STATIC_OTP = '1234';
 const OTP_VALIDITY_SECONDS = 60;
+const OTP_LENGTH = 4;
 
 export default function OTP() {
   const mobile = useAppStore((s) => s.mobile);
   const login = useAppStore((s) => s.login);
-  const [otp, setOtp] = useState('');
+  const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
+  const otp = otpDigits.join('');
   const [remainingSeconds, setRemainingSeconds] = useState(OTP_VALIDITY_SECONDS);
   const [verifying, setVerifying] = useState(false);
+  const inputRefs = useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
     if (remainingSeconds <= 0) return;
@@ -23,7 +26,13 @@ export default function OTP() {
   }, [remainingSeconds]);
 
   useEffect(() => {
-    if (!mobile) router.replace('/(customer)/auth/login');
+    if (!mobile) {
+      router.replace('/(customer)/auth/login');
+      return;
+    }
+    // Put the cursor in the first OTP box as soon as the screen opens.
+    const timer = setTimeout(() => inputRefs.current[0]?.focus(), 80);
+    return () => clearTimeout(timer);
   }, [mobile]);
 
   const formattedTimer = useMemo(() => {
@@ -31,6 +40,32 @@ export default function OTP() {
     const seconds = remainingSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, [remainingSeconds]);
+
+  const updateOtpAt = (index: number, rawValue: string) => {
+    const digits = rawValue.replace(/\D/g, '');
+    if (!digits) {
+      const next = [...otpDigits];
+      next[index] = '';
+      setOtpDigits(next);
+      return;
+    }
+
+    // Also handle browser/mobile paste/autofill of multiple digits.
+    const next = [...otpDigits];
+    digits.slice(0, OTP_LENGTH - index).split('').forEach((digit, offset) => {
+      next[index + offset] = digit;
+    });
+    setOtpDigits(next);
+
+    const nextIndex = Math.min(index + digits.length, OTP_LENGTH - 1);
+    inputRefs.current[nextIndex]?.focus();
+  };
+
+  const handleKeyPress = (index: number, key: string) => {
+    if (key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
 
   const verify = async () => {
     if (remainingSeconds <= 0) {
@@ -56,15 +91,29 @@ export default function OTP() {
 
   const resend = () => {
     if (remainingSeconds > 0) return;
-    setOtp('');
+    setOtpDigits(Array(OTP_LENGTH).fill(''));
     setRemainingSeconds(OTP_VALIDITY_SECONDS);
+    setTimeout(() => inputRefs.current[0]?.focus(), 50);
   };
 
   return <Screen scroll={false}><View style={{alignItems:'center',paddingTop:42}}>
     <Logo size={130}/><Text style={{fontSize:25,fontWeight:'900',color:colors.ink,marginTop:10}}>Enter OTP</Text>
     <Text style={{color:colors.inkSoft,marginTop:6,textAlign:'center'}}>We've sent a 4-digit code to{`\n`}+91 {mobile}</Text>
     <View style={{flexDirection:'row',gap:9,marginTop:26,marginBottom:22}}>
-      {[0,1,2,3].map(i=><TextInput key={i} value={otp[i]??''} onChangeText={v=>{const next=otp.split(''); next[i]=v.slice(-1).replace(/\D/g,''); setOtp(next.join('').slice(0,4));}} keyboardType="number-pad" maxLength={1} editable={!verifying && remainingSeconds>0} style={{width:55,height:55,backgroundColor:'#fff',borderWidth:1,borderColor:otp.length===4?colors.green:colors.line,borderRadius:10,textAlign:'center',fontSize:22,fontWeight:'800',color:colors.ink}}/>)}
+      {Array.from({ length: OTP_LENGTH }, (_, i) => (
+        <TextInput
+          key={i}
+          ref={(ref) => { inputRefs.current[i] = ref; }}
+          value={otp[i] ?? ''}
+          onChangeText={(value) => updateOtpAt(i, value)}
+          onKeyPress={({ nativeEvent }) => handleKeyPress(i, nativeEvent.key)}
+          keyboardType="number-pad"
+          maxLength={OTP_LENGTH}
+          editable={!verifying && remainingSeconds > 0}
+          selectTextOnFocus
+          style={{width:55,height:55,backgroundColor:'#fff',borderWidth:1,borderColor:otp.length===OTP_LENGTH?colors.green:colors.line,borderRadius:10,textAlign:'center',fontSize:22,fontWeight:'800',color:colors.ink}}
+        />
+      ))}
     </View>
     <Text style={{color:remainingSeconds>0?colors.inkSoft:colors.danger,marginBottom:8}}>{remainingSeconds>0?`OTP expires in ${formattedTimer}`:'OTP expired'}</Text>
     <Text style={{color:colors.inkSoft,marginBottom:22}}>Demo OTP: <Text style={{fontWeight:'900',color:colors.greenDark}}>1234</Text></Text>
