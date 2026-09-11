@@ -24,3 +24,7 @@ The mobile client does **not** mark an order paid, write a successful payment tr
 - `orders`
 - existing order payment fields
 - future `paymentTransactions` data can be consumed without creating a duplicate order/payment model.
+
+## Regenerated correction
+- Added the optional `transactionId` field to the mobile `CustomerOrder` type because order details already supports displaying a trusted transaction id when present.
+- No payment gateway was added or assumed.

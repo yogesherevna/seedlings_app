@@ -83,6 +83,7 @@ export type CustomerOrder = {
   createdAt?: unknown;
   scheduledDeliveryDate?: string;
   paymentTransactions?: PaymentTransaction[];
+  transactionId?: string;
 };
 
 function timestampMillis(value: unknown) {
