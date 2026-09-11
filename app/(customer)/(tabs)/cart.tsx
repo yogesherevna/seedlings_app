@@ -2,7 +2,6 @@ import { Image, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Button, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
-import { productImages } from '../../../data/imageMap';
 import { getCartTotals } from '../../../services/cart/cartService';
 import { useAppStore } from '../../../store/appStore';
 
@@ -30,7 +29,7 @@ export default function Cart() {
             const itemSavings = Math.max(0, itemMrp - item.price) * item.quantity;
             const imageSource = item.imageUrl?.startsWith('http')
               ? { uri: item.imageUrl }
-              : (productImages[item.image] ?? productImages['broccoli.jpg']);
+              : require('../../../assets/products/placeholder.png');
 
             return (
               <View key={`${item.id}:${item.selectedWeight}`} style={styles.itemCard}>

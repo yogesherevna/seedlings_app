@@ -34,7 +34,7 @@ export async function createCustomerOneTimeOrder(input: CreateCustomerOrderInput
     const quantity = Math.max(1, Math.floor(item.quantity));
     return {
       productId: item.id, productName: String(product.name ?? item.name), productSku: typeof product.sku === 'string' ? product.sku : undefined,
-      weightGrams: Number.isFinite(Number(item.selectedWeight)) ? Number(item.selectedWeight) : undefined, weightLabel: item.selectedWeight,
+      weightGrams: (() => { const raw = String(item.selectedWeight ?? '').trim(); const match = raw.match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|g)?/i); if (!match) return undefined; const value = Number(match[1]); return Number.isFinite(value) ? (String(match[2] ?? '').toLowerCase() === 'kg' ? value * 1000 : value) : undefined; })(), weightLabel: item.selectedWeight,
       quantity, unitMrp, mrp: unitMrp * quantity, unitPrice: product.sellingPrice, price: product.sellingPrice * quantity,
       discount: Math.max(0, (unitMrp - product.sellingPrice) * quantity), imageUrl: typeof product.imageUrl === 'string' ? product.imageUrl : undefined,
     };

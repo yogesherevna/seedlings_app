@@ -1,4 +1,4 @@
-# Seedlings Microgreens Mobile — Static Navigation MVP
+# Seedlings Microgreens Mobile — Customer MVP
 
 This is the first development cut of the Seedlings Microgreens customer mobile application.
 
@@ -11,27 +11,20 @@ This is the first development cut of the Seedlings Microgreens customer mobile a
 - Static mobile-number validation (10 digits)
 - Static OTP validation (`1234`)
 - Seedlings supplied logo used for splash/app icon
-- Product catalog driven by `data/products.json`
-- Local product-image folder
+- Customer product catalogue driven by the existing Firebase `salesProducts` collection
+- SQLite product cache with Firebase refresh and offline fallback
+- Product weight/sale options derived from active salable-product records
 - Home, Products, Product Detail, Cart, Checkout, Order Success, Orders
 - Profile, Addresses, Subscriptions, Wallet, Notifications, Feedback, About
 - No Firebase connection yet; this cut is intentionally static/demo-only
 
-## Product images
+## Product catalogue
 
-Put actual image files in:
+The customer catalogue does not contain hardcoded product names, prices, weights, or product counts. The source of truth is the existing Firebase `salesProducts` collection. Only active salable products are shown.
 
-`assets/products/`
+For single products, active salable records built from the same production product are exposed on Product Detail as weight/sale options (for example 100g and 200g), with the price, MRP, image, and availability belonging to the selected salable record.
 
-Then change only the `image` filename in:
-
-`data/products.json`
-
-After adding/replacing local images, run:
-
-`npm run generate:image-map`
-
-This regenerates `data/imageMap.ts` from the files actually present in `assets/products/`, so you do not have to edit application code for every product image.
+SQLite remains a persistent cache for offline fallback. When Firebase is reachable, the remote `salesProducts` result replaces the cache so stale products do not remain in the catalogue.
 
 ## Development
 

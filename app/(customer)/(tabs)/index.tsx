@@ -5,16 +5,21 @@ import { ProductCard, Screen, SearchBar } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { getProducts } from '../../../services/products/productService';
 import type { Product } from '../../../services/products/productService';
+import { getCustomerAddresses } from '../../../services/customerAddresses';
+import { useAppStore } from '../../../store/appStore';
 
 export default function Home() {
   const [q,setQ]=useState('');
   const [products,setProducts]=useState<Product[]>([]);
+  const [addressLabel,setAddressLabel]=useState('Add delivery address');
+  const mobile=useAppStore(s=>s.mobile);
   useEffect(()=>{ void getProducts().then(r=>setProducts(r.products)).catch(()=>setProducts([])); },[]);
+  useEffect(()=>{ if(!mobile)return; void getCustomerAddresses(mobile).then(addresses=>{ const a=addresses[0]; if(a) setAddressLabel(`${a.label || 'Home'} · ${a.pincode || a.city || ''}`.replace(/ · $/,'')); }).catch(()=>{}); },[mobile]);
   const popular=products.filter(p=>p.popular).filter(p=>p.name.toLowerCase().includes(q.toLowerCase()));
   return <Screen>
     <View style={{paddingTop:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
       <Text style={{fontSize:24,fontWeight:'900',color:colors.greenDark}}>Seedlings</Text>
-      <View style={{alignItems:'flex-end'}}><Text style={{fontSize:11,color:colors.inkSoft}}>Deliver to</Text><Text style={{fontSize:13,fontWeight:'800',color:colors.ink}}>Home · 411001⌄</Text></View>
+      <View style={{alignItems:'flex-end'}}><Text style={{fontSize:11,color:colors.inkSoft}}>Deliver to</Text><Text style={{fontSize:13,fontWeight:'800',color:colors.ink}}>{addressLabel}⌄</Text></View>
     </View>
     <SearchBar value={q} onChangeText={setQ}/>
     <View style={{marginTop:14,backgroundColor:colors.greenDark,borderRadius:16,padding:18,overflow:'hidden'}}>
