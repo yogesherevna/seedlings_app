@@ -1,15 +1,161 @@
-import { Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { Button, Header, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import { getCartTotals } from '../../../services/cart/cartService';
+import { getCustomerAddresses, type CustomerAddress } from '../../../services/customerAddresses';
 
-export default function Checkout(){const cart=useAppStore(s=>s.cart); const clear=useAppStore(s=>s.clearCart); const totals=getCartTotals(cart); const subtotal=totals.subtotal; const total=totals.total;
- return <Screen><Header title="Checkout" onBack={()=>router.back()}/>
- <Text style={styles.heading}>Delivery Address</Text><View style={styles.card}><Text style={styles.bold}>Home</Text><Text style={styles.muted}>123, Green Park, Pune · 411001</Text></View>
- <Text style={styles.heading}>Delivery Slot</Text><View style={styles.card}><Text style={{color:colors.greenDark,fontWeight:'900'}}>● Sat, 30 Aug</Text><Text style={[styles.muted,{marginTop:8}]}>○ Sun, 31 Aug</Text></View>
- <Text style={styles.heading}>Payment Method</Text><View style={styles.card}><Text style={styles.bold}>◉ UPI</Text><Text style={[styles.muted,{marginTop:9}]}>○ Card</Text><Text style={[styles.muted,{marginTop:9}]}>○ Wallet — ₹50 available</Text></View>
- <View style={styles.card}><View style={styles.line}><Text>Subtotal</Text><Text>₹{subtotal}</Text></View><View style={styles.line}><Text>Delivery</Text><Text>₹{totals.delivery}</Text></View><View style={styles.line}><Text style={styles.bold}>Total</Text><Text style={{fontSize:19,fontWeight:'900'}}>₹{total}</Text></View><Button title="Place Order" onPress={()=>{clear();router.replace('/(customer)/checkout/success')}}/></View>
- </Screen>}
-const styles={heading:{fontSize:18,fontWeight:'900',color:colors.ink,marginTop:12,marginBottom:8},card:{backgroundColor:'#fff',borderRadius:14,borderWidth:1,borderColor:colors.lineSoft,padding:15,marginBottom:8},bold:{fontWeight:'900',color:colors.ink},muted:{color:colors.inkSoft,marginTop:4},line:{flexDirection:'row',justifyContent:'space-between',paddingVertical:7,borderBottomWidth:1,borderBottomColor:colors.lineSoft}};
+const PAYMENT_METHODS = ['UPI', 'Card', 'Wallet'] as const;
+type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+function formatAddress(address: CustomerAddress) {
+  return [address.addressLine1, address.addressLine2, address.landmark, address.city, address.state, address.pincode]
+    .filter(Boolean)
+    .join(', ');
+}
+
+export default function Checkout() {
+  const cart = useAppStore((s) => s.cart);
+  const mobile = useAppStore((s) => s.mobile);
+  const totals = useMemo(() => getCartTotals(cart), [cart]);
+  const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [addressError, setAddressError] = useState('');
+  const [validationError, setValidationError] = useState('');
+
+  const loadAddresses = useCallback(async () => {
+    if (!mobile) return;
+    setLoadingAddresses(true);
+    setAddressError('');
+    try {
+      const result = await getCustomerAddresses(mobile);
+      setAddresses(result);
+      setSelectedAddressId((current) => result.some((item) => item.id === current) ? current : result[0]?.id ?? '');
+    } catch (error) {
+      setAddressError(error instanceof Error ? error.message : 'Unable to load your addresses.');
+    } finally {
+      setLoadingAddresses(false);
+    }
+  }, [mobile]);
+
+  useEffect(() => {
+    void loadAddresses();
+  }, [loadAddresses]);
+
+  useFocusEffect(useCallback(() => {
+    void loadAddresses();
+  }, [loadAddresses]));
+
+  const selectedAddress = addresses.find((item) => item.id === selectedAddressId);
+  const canContinue = cart.length > 0 && Boolean(selectedAddress);
+
+  const validateCheckout = () => {
+    setValidationError('');
+    if (cart.length === 0) {
+      setValidationError('Your cart is empty.');
+      return;
+    }
+    if (!selectedAddress) {
+      setValidationError('Please select a delivery address.');
+      return;
+    }
+    // Payment integration and order creation are intentionally handled in Phase 9.
+    router.push({
+      pathname: '/(customer)/checkout/success',
+      params: { preview: 'true', paymentMethod },
+    });
+  };
+
+  return (
+    <Screen>
+      <Header title="Checkout" onBack={() => router.back()} />
+
+      <Text style={styles.heading}>Delivery Address</Text>
+      {loadingAddresses ? (
+        <View style={styles.stateCard}><ActivityIndicator color={colors.greenDark} /><Text style={styles.muted}>Loading your addresses…</Text></View>
+      ) : addresses.length === 0 ? (
+        <View style={styles.card}>
+          <Text style={styles.bold}>No saved address</Text>
+          <Text style={styles.muted}>Add a delivery address before continuing.</Text>
+          <View style={{ marginTop: 12 }}><Button title="Add Address" onPress={() => router.push('/(customer)/account/addresses')} /></View>
+        </View>
+      ) : (
+        <>
+          {addresses.map((address) => {
+            const selected = address.id === selectedAddressId;
+            return (
+              <Pressable key={address.id} onPress={() => { setSelectedAddressId(address.id); setValidationError(''); }} style={[styles.card, selected && styles.selectedCard]}>
+                <View style={styles.addressHeader}>
+                  <Text style={styles.bold}>{address.label || 'Address'}</Text>
+                  <Text style={selected ? styles.selectedMark : styles.radio}>{selected ? '●' : '○'}</Text>
+                </View>
+                {address.name ? <Text style={styles.bold}>{address.name}</Text> : null}
+                <Text style={styles.muted}>{formatAddress(address)}</Text>
+                {address.mobileNumber ? <Text style={styles.muted}>+91 {address.mobileNumber}</Text> : null}
+              </Pressable>
+            );
+          })}
+          <Button title="Manage Addresses" secondary onPress={() => router.push('/(customer)/account/addresses')} />
+        </>
+      )}
+
+      <Text style={styles.heading}>Delivery</Text>
+      <View style={styles.card}>
+        <Text style={styles.bold}>Standard delivery</Text>
+        <Text style={styles.muted}>Delivery availability and charges are validated when the order is placed.</Text>
+      </View>
+
+      <Text style={styles.heading}>Payment Method</Text>
+      <View style={styles.card}>
+        {PAYMENT_METHODS.map((method) => {
+          const selected = paymentMethod === method;
+          return (
+            <Pressable key={method} onPress={() => setPaymentMethod(method)} style={styles.paymentRow}>
+              <Text style={[styles.paymentText, selected && styles.selectedText]}>{selected ? '●' : '○'}  {method}</Text>
+              {method === 'Wallet' ? <Text style={styles.muted}>Balance validated at checkout</Text> : null}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Text style={styles.heading}>Order Summary</Text>
+      <View style={styles.card}>
+        <View style={styles.line}><Text style={styles.muted}>MRP</Text><Text style={styles.muted}>₹{totals.mrpSubtotal}</Text></View>
+        <View style={styles.line}><Text style={styles.muted}>Subtotal</Text><Text style={styles.muted}>₹{totals.subtotal}</Text></View>
+        {totals.savings > 0 ? <View style={styles.line}><Text style={styles.saving}>You save</Text><Text style={styles.saving}>−₹{totals.savings}</Text></View> : null}
+        <View style={styles.line}><Text style={styles.muted}>Delivery</Text><Text style={styles.muted}>₹{totals.delivery}</Text></View>
+        <View style={[styles.line, { borderBottomWidth: 0 }]}><Text style={styles.totalLabel}>Total</Text><Text style={styles.total}>₹{totals.total}</Text></View>
+      </View>
+
+      {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
+      {validationError ? <Text style={styles.error}>{validationError}</Text> : null}
+      <View style={{ marginBottom: 18 }}>
+        <Button title="Continue" onPress={validateCheckout} />
+      </View>
+    </Screen>
+  );
+}
+
+const styles = {
+  heading: { fontSize: 18, fontWeight: '900' as const, color: colors.ink, marginTop: 12, marginBottom: 8 },
+  card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 15, marginBottom: 8 },
+  selectedCard: { borderColor: colors.green, borderWidth: 2 },
+  stateCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 18, marginBottom: 8, alignItems: 'center' as const, gap: 8 },
+  addressHeader: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, marginBottom: 5 },
+  bold: { fontWeight: '900' as const, color: colors.ink },
+  muted: { color: colors.inkSoft, marginTop: 4, lineHeight: 19 },
+  radio: { color: colors.inkFaint, fontSize: 18 },
+  selectedMark: { color: colors.greenDark, fontSize: 18 },
+  selectedText: { color: colors.greenDark, fontWeight: '900' as const },
+  paymentRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  paymentText: { color: colors.ink, fontWeight: '800' as const },
+  line: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
+  saving: { color: colors.greenDark, fontWeight: '800' as const },
+  totalLabel: { fontWeight: '900' as const, color: colors.ink },
+  total: { fontWeight: '900' as const, fontSize: 19, color: colors.ink },
+  error: { color: colors.danger, fontSize: 13, fontWeight: '700' as const, marginVertical: 6 },
+};
