@@ -1,3 +1,1 @@
-import rawProducts from './products.json';
-export type Product = typeof rawProducts[number];
-export const products = rawProducts;
+export type { Product } from '../services/products/productService';

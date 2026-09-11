@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { ProductCard, Screen, SearchBar } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
-import { products } from '../../../data/products';
+import { getProducts } from '../../../services/products/productService';
+import type { Product } from '../../../services/products/productService';
 
 export default function Home() {
   const [q,setQ]=useState('');
+  const [products,setProducts]=useState<Product[]>([]);
+  useEffect(()=>{ void getProducts().then(r=>setProducts(r.products)).catch(()=>setProducts([])); },[]);
   const popular=products.filter(p=>p.popular).filter(p=>p.name.toLowerCase().includes(q.toLowerCase()));
   return <Screen>
     <View style={{paddingTop:8,flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>

@@ -3,7 +3,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '../constants/theme';
 import { productImages } from '../data/imageMap';
-import type { Product } from '../data/products';
+import type { Product } from '../services/products/productService';
 import { useAppStore } from '../store/appStore';
 
 export function Screen({ children, scroll = true }: { children: React.ReactNode; scroll?: boolean }) {
@@ -57,14 +57,14 @@ export function Button({ title, onPress, secondary = false, orange = false }: { 
 
 export function ProductCard({ product, onPress }: { product: Product; onPress: () => void }) {
   const addToCart = useAppStore((s) => s.addToCart);
-  const source = productImages[product.image] ?? productImages['broccoli.jpg'];
+  const source = product.imageUrl?.startsWith('http') ? { uri: product.imageUrl } : (productImages[product.image] ?? productImages['broccoli.jpg']);
   return (
     <Pressable onPress={onPress} style={styles.productCard}>
       <View style={styles.productImageWrap}><Image source={source} style={styles.productImage} resizeMode="contain" /></View>
       <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
       <View style={styles.chipsRow}><Text style={styles.chip}>{product.defaultWeight}</Text></View>
       <View style={styles.priceRow}>
-        <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}><Text style={styles.price}>₹{product.price}</Text><Text style={styles.mrp}>₹{product.mrp}</Text></View>
+        <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}><Text style={styles.price}>₹{product.price}</Text><Text style={styles.mrp}>{product.mrp ? `₹${product.mrp}` : ''}</Text></View>
         <Pressable onPress={() => addToCart(product)} style={styles.addButton}><Text style={styles.addText}>+</Text></Pressable>
       </View>
     </Pressable>
