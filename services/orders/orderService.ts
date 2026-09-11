@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, getDocs, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../core/firebaseClient';
 import { normalizeIndianMobile } from '../clientOnboarding';
 import type { CartItem } from '../cart/cartService';
@@ -51,4 +51,60 @@ export async function createCustomerOneTimeOrder(input: CreateCustomerOrderInput
     orderType: 'one_time', packingStatus: 'pending', statusHistory: [{ status: 'confirmed', changedAt: new Date().toISOString(), source: 'customer_mobile' }], createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   });
   return { id: orderRef.id, orderNumber, total };
+}
+
+
+export type CustomerOrder = {
+  id: string;
+  orderNumber?: string;
+  customerId: string;
+  customerName?: string;
+  customerMobile?: string;
+  items?: Array<Record<string, unknown>>;
+  subtotal?: number;
+  deliveryFee?: number;
+  deliveryCharge?: number;
+  discount?: number;
+  discountTotal?: number;
+  mrpTotal?: number;
+  total?: number;
+  totalAmount?: number;
+  currency?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  status?: string;
+  deliveryStatus?: string;
+  deliveryAddress?: Record<string, unknown>;
+  deliveryAddressSnapshot?: Record<string, unknown>;
+  orderType?: string;
+  packingStatus?: string;
+  createdAt?: unknown;
+  scheduledDeliveryDate?: string;
+};
+
+function timestampMillis(value: unknown) {
+  if (value && typeof value === 'object' && 'toMillis' in value && typeof (value as { toMillis?: unknown }).toMillis === 'function') {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  if (typeof value === 'string') return Date.parse(value) || 0;
+  return 0;
+}
+
+export async function getCustomerOrders(mobileInput: string): Promise<CustomerOrder[]> {
+  const mobile = normalizeIndianMobile(mobileInput);
+  if (!mobile) throw new Error('Invalid customer mobile number.');
+  const snapshot = await getDocs(query(collection(db, 'orders'), where('customerId', '==', mobile)));
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...(item.data() as Omit<CustomerOrder, 'id'>) }))
+    .sort((a, b) => timestampMillis(b.createdAt) - timestampMillis(a.createdAt));
+}
+
+export async function getCustomerOrder(mobileInput: string, orderId: string): Promise<CustomerOrder | null> {
+  const mobile = normalizeIndianMobile(mobileInput);
+  if (!mobile || !orderId) return null;
+  const snapshot = await getDoc(doc(db, 'orders', orderId));
+  if (!snapshot.exists()) return null;
+  const order = { id: snapshot.id, ...(snapshot.data() as Omit<CustomerOrder, 'id'>) };
+  if (order.customerId !== mobile) return null;
+  return order;
 }
