@@ -67,3 +67,9 @@ Do not add NestJS, PostgreSQL, Prisma, or another API backend. The confirmed arc
 - Phase 11: Customer delivery slot selection using existing deliverySlots collection.
 
 Phase 16: Customer Subscription Delivery Calendar
+
+- Phase 17: Customer wallet reads existing walletTransactions with no client-side financial mutations.
+
+
+## Phase 18
+Customer notifications are now read from the existing `notifications` collection. See `README_PHASE18_CUSTOMER_NOTIFICATIONS.md`.
