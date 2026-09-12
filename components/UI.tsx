@@ -1,46 +1,11 @@
 import React from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '../constants/theme';
 import type { Product } from '../services/products/productService';
 
 export function Screen({ children, scroll = true }: { children: React.ReactNode; scroll?: boolean }) {
   const content = <View style={styles.screen}>{children}</View>;
   return scroll ? <ScrollView style={styles.root} contentContainerStyle={styles.scroll}>{content}</ScrollView> : <View style={styles.root}>{content}</View>;
-}
-
-export function Header({
-  title,
-  onBack,
-}: {
-  title: string;
-  onBack?: () => void;
-}) {
-  const insets = useSafeAreaInsets();
-
-  return (
-    <View
-      style={[
-        styles.header,
-        {
-          paddingTop: Math.max(insets.top, 8),
-          height: 54 + Math.max(insets.top, 8),
-        },
-      ]}
-    >
-      {onBack ? (
-        <Pressable onPress={onBack} style={styles.back}>
-          <Text style={styles.backText}>‹</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.back} />
-      )}
-
-      <Text style={styles.headerTitle}>{title}</Text>
-
-      <View style={styles.back} />
-    </View>
-  );
 }
 
 export function Logo({ size = 110 }: { size?: number }) {

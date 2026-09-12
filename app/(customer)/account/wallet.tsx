@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Header, Screen } from '../../../components/UI';
+import { Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { getStoredCustomerMobile } from '../../../services/clientOnboarding';
 import { getCustomerWallet, prettyWalletType, type CustomerWallet } from '../../../services/wallet/walletService';
@@ -32,7 +32,7 @@ export default function ScreenPage() {
   useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   return <Screen>
-    <Header title="My Wallet" onBack={() => router.back()} />
+
     {loading ? <View style={{ paddingVertical: 40, alignItems: 'center' }}><ActivityIndicator /><Text style={{ marginTop: 10, color: colors.inkFaint }}>Loading wallet…</Text></View> :
       error ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 18 }}><Text style={{ color: colors.ink }}>{error}</Text></View> :
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />} showsVerticalScrollIndicator={false}>

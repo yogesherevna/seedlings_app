@@ -1,7 +1,7 @@
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { Button, Header, Screen } from '../../../components/UI';
+import { Button, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import {
@@ -79,7 +79,7 @@ export default function CustomerAddressesScreen() {
 
   return (
     <Screen>
-      <Header title="Delivery Addresses" onBack={() => router.back()} />
+
       {!formOpen && <Button title="+ Add address" onPress={openAdd} />}
       {loading ? <View style={{ paddingVertical: 60, alignItems: 'center' }}><ActivityIndicator size="large" color={colors.green} /><Text style={{ color: colors.inkSoft, marginTop: 12 }}>Loading addresses…</Text></View> : formOpen ? (
         <View style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 16, marginTop: 14 }}>

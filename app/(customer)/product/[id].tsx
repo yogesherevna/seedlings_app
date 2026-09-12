@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Button, Header, Screen } from '../../../components/UI';
+import { Button, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { getProducts, refreshProducts, isSubscriptionEligible, type Product } from '../../../services/products/productService';
 import { getActiveSubscriptionPlans, type SubscriptionPlan } from '../../../services/subscriptions/subscriptionService';
@@ -47,7 +47,7 @@ export default function ProductDetail() {
   const canBuyOneTime = Boolean(product?.oneTimePurchase);
 
   if (loading) return <Screen><ActivityIndicator color={colors.greenDark} style={{ marginTop: 40 }} /></Screen>;
-  if (!product) return <Screen><Header title="Product" onBack={() => router.back()} /><Text style={{ color: colors.inkSoft }}>Product not found.</Text></Screen>;
+  if (!product) return <Screen><Text style={{ color: colors.inkSoft }}>Product not found.</Text></Screen>;
 
   const imageSource = product.imageUrl?.startsWith('http') ? { uri: product.imageUrl } : require('../../../assets/products/placeholder.png');
   const saving = Math.max(0, (product.mrp ?? product.price) - product.price);
@@ -71,7 +71,7 @@ export default function ProductDetail() {
 
   return (
     <Screen>
-      <Header title="" onBack={() => router.back()} />
+
       <Image source={imageSource} style={{ width: '100%', height: 250, backgroundColor: colors.block, borderRadius: 16 }} resizeMode="contain" />
       <Text style={{ fontSize: 25, fontWeight: '900', color: colors.ink, marginTop: 16 }}>{product.name}</Text>
       <Text style={{ color: colors.inkSoft, marginTop: 5, lineHeight: 20 }}>{product.description || 'Freshly grown microgreens, harvested with care and prepared for delivery.'}</Text>

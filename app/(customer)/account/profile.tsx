@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { Button, Header, Screen } from '../../../components/UI';
+import { Button, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import { getCustomerProfile, updateCustomerProfile } from '../../../services/customerProfile';
@@ -53,7 +53,7 @@ export default function CustomerProfileScreen() {
 
   return (
     <Screen>
-      <Header title="My Profile" onBack={() => router.back()} />
+
       {loading ? (
         <View style={{ paddingVertical: 60, alignItems: 'center' }}>
           <ActivityIndicator size="large" color={colors.green} />

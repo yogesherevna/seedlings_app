@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
-import { Button, Header, Screen } from '../../../components/UI';
+import { Button, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import { getCartTotals } from '../../../services/cart/cartService';
@@ -114,7 +114,7 @@ export default function Checkout() {
 
   return (
     <Screen>
-      <Header title="Checkout" onBack={() => router.back()} />
+
 
       <Text style={styles.heading}>Delivery details</Text>
       <Text style={styles.subheading}>Confirm your delivery</Text>

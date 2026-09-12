@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Header, Screen } from '../../../components/UI';
+import { Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { getCustomerNotifications, CustomerNotification } from '../../../services/notifications/notificationService';
 import { getStoredCustomerMobile } from '../../../services/auth/customerSession';
@@ -50,7 +50,7 @@ export default function ScreenPage() {
 
   return (
     <Screen>
-      <Header title="Notifications" onBack={() => router.back()} />
+
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />} contentContainerStyle={{ paddingBottom: 30 }}>
         {loading ? <View style={{ padding: 30, alignItems: 'center' }}><ActivityIndicator /></View> : error ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16 }}><Text style={{ color: colors.ink }}>{error}</Text></View> : items.length === 0 ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20 }}><Text style={{ fontWeight: '900', color: colors.ink }}>No notifications</Text><Text style={{ color: colors.inkSoft, marginTop: 6 }}>You’ll see order and subscription updates here.</Text></View> : items.map((item) => <NotificationCard key={item.id} item={item} />)}
       </ScrollView>

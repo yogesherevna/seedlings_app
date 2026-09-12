@@ -1,7 +1,7 @@
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Header, Screen } from '../../../components/UI';
+import { Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import { getCustomerAddresses, type CustomerAddress } from '../../../services/customerAddresses';
@@ -84,10 +84,10 @@ export default function Subscriptions() {
     finally { setBusy(false); }
   };
 
-  if (loading) return <Screen><Header title="Subscriptions" onBack={() => router.back()} /><ActivityIndicator size="large" color={colors.green} style={{ marginTop: 45 }} /></Screen>;
+  if (loading) return <Screen><ActivityIndicator size="large" color={colors.green} style={{ marginTop: 45 }} /></Screen>;
 
   return <Screen>
-    <Header title="Subscriptions" onBack={() => router.back()} />
+
     <View style={styles.panel}><Text style={styles.title}>My Subscription</Text>{active ? <><Text style={styles.productName}>{active.productName || 'Subscription'}</Text><Text style={styles.muted}>{active.sellingOptionLabel || 'Pack'} × {active.quantity || 1} · {active.frequency || ''} · Saturday delivery</Text><View style={styles.kpis}>{[['Status', prettySubscriptionStatus(active.status)], ['Deliveries', String(active.totalDeliveries ?? '—')], ['Remaining', String(active.remainingDeliveries ?? '—')]].map(([label, value]) => <View key={label} style={styles.kpi}><Text style={styles.small}>{label}</Text><Text style={styles.kpiValue}>{value}</Text></View>)}</View><Text style={styles.muted}>Next delivery: <Text style={styles.bold}>{active.nextDeliveryDate || '—'}</Text></Text><View style={styles.actions}>{active.status === 'active' ? <Pressable disabled={busy} onPress={() => update('pause')} style={styles.outline}><Text style={styles.greenText}>Pause</Text></Pressable> : null}{active.status === 'paused' ? <Pressable disabled={busy} onPress={() => update('resume')} style={styles.primary}><Text style={styles.white}>Resume</Text></Pressable> : null}{['active', 'paused'].includes(String(active.status)) ? <Pressable disabled={busy} onPress={() => Alert.alert('Cancel subscription', 'Cancel this subscription?', [{ text: 'Keep', style: 'cancel' }, { text: 'Cancel', style: 'destructive', onPress: () => { void update('cancel'); } }])} style={styles.outline}><Text style={{ color: '#a33', fontWeight: '900' }}>Cancel</Text></Pressable> : null}</View></> : <Text style={styles.muted}>No active subscription found.</Text>}</View>
 
     <Text style={styles.section}>Available plans</Text>{plans.length ? plans.map((plan) => <Pressable key={plan.id} onPress={() => setSelectedPlan(plan.id)} style={[styles.plan, selectedPlan === plan.id && styles.planSelected]}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.planName}>{plan.name}</Text><Text style={styles.muted}>{plan.frequency}{plan.deliveriesPerTerm ? ` · ${plan.deliveriesPerTerm} deliveries` : ''} · Saturday</Text></View><Text style={styles.price}>{money(plan.price)}</Text></View>{selectedPlan === plan.id ? <Text style={styles.greenText}>Selected</Text> : null}</Pressable>) : <Text style={styles.muted}>No active subscription plans are available.</Text>}

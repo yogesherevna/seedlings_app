@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Button, Header, Screen } from '../../../components/UI';
+import { Button, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { getCustomerOrder, type CustomerOrder } from '../../../services/orders/orderService';
 import { useAppStore } from '../../../store/appStore';
@@ -52,11 +52,11 @@ export default function OrderDetail() {
   const discount = order?.discountTotal ?? order?.discount ?? 0;
   const transactions: PaymentTransaction[] = Array.isArray(order?.paymentTransactions) ? order.paymentTransactions : [];
 
-  if (loading) return <Screen><Header title="Order Details" onBack={() => router.back()} /><View style={{ paddingTop: 40, alignItems: 'center' }}><ActivityIndicator size="large" color={colors.green} /><Text style={{ color: colors.inkSoft, marginTop: 12 }}>Loading order…</Text></View></Screen>;
-  if (error || !order) return <Screen><Header title="Order Details" onBack={() => router.back()} /><View style={{ paddingTop: 35 }}><Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>{error || 'Order not found.'}</Text><Text style={{ color: colors.inkSoft, marginTop: 8, marginBottom: 18 }}>Only your own customer orders can be viewed here.</Text><Button title="Back to My Orders" onPress={() => router.replace('/(customer)/(tabs)/orders')} /></View></Screen>;
+  if (loading) return <Screen><View style={{ paddingTop: 40, alignItems: 'center' }}><ActivityIndicator size="large" color={colors.green} /><Text style={{ color: colors.inkSoft, marginTop: 12 }}>Loading order…</Text></View></Screen>;
+  if (error || !order) return <Screen><View style={{ paddingTop: 35 }}><Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>{error || 'Order not found.'}</Text><Text style={{ color: colors.inkSoft, marginTop: 8, marginBottom: 18 }}>Only your own customer orders can be viewed here.</Text><Button title="Back to My Orders" onPress={() => router.replace('/(customer)/(tabs)/orders')} /></View></Screen>;
 
   return <Screen>
-    <Header title="Order Details" onBack={() => router.back()} />
+
     <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 14, padding: 16, marginTop: 8 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
         <Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>{order.orderNumber ? `#${order.orderNumber}` : `#${order.id}`}</Text>

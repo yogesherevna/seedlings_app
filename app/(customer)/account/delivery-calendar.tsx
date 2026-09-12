@@ -1,7 +1,7 @@
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
-import { Header, Screen } from '../../../components/UI';
+import { Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import { getCustomerSubscriptions, type CustomerSubscription } from '../../../services/subscriptions/subscriptionService';
@@ -56,7 +56,7 @@ export default function DeliveryCalendar() {
   const next = active?.nextDeliveryDate;
 
   return <Screen>
-    <Header title="Delivery Calendar" onBack={() => router.back()} />
+
     {loading ? <View style={{ paddingVertical: 60, alignItems: 'center' }}><ActivityIndicator size="large" color={colors.green} /><Text style={{ color: colors.inkSoft, marginTop: 12 }}>Loading delivery calendar…</Text></View> : error ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16 }}><Text style={{ color: '#a33', fontWeight: '800' }}>{error}</Text></View> : !active ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16 }}><Text style={{ fontSize: 17, fontWeight: '900', color: colors.ink }}>No active subscription</Text><Text style={{ color: colors.inkSoft, marginTop: 7 }}>Your delivery calendar will appear here when you have an active subscription.</Text></View> : <>
       <View style={{ backgroundColor: '#fff', borderRadius: 15, borderWidth: 1, borderColor: colors.lineSoft, padding: 16, marginBottom: 14 }}>
         <Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>{active.productName || 'Subscription'}</Text>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { Header, Screen } from '../../../components/UI';
+import { Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import { getCustomerOrders, type CustomerOrder } from '../../../services/orders/orderService';
@@ -62,7 +62,7 @@ export default function FeedbackScreen() {
   };
 
   return <Screen>
-    <Header title="Feedback" onBack={() => router.back()} />
+
     <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />} contentContainerStyle={{ paddingBottom: 30 }}>
       <View style={{ backgroundColor: '#fff', borderRadius: 15, padding: 16, borderWidth: 1, borderColor: colors.lineSoft }}>
         <Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>How was your experience?</Text>
