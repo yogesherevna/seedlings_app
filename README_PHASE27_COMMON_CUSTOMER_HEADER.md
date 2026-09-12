@@ -1,32 +1,22 @@
 # Phase 27 — Common Customer App Header & Fixed Navigation
 
+Based on the verified Phase 26 customer app parity source.
+
 ## Scope
+- Add one common authenticated customer header at the `(customer)` layout level.
+- Keep the header fixed while screen content scrolls.
+- Keep the bottom tab navigation fixed.
+- Show the logged-in customer's saved delivery address in the header.
+- Keep login/OTP outside the authenticated customer shell.
+- Preserve existing customer product, cart, checkout, order, and subscription behaviour.
+- Fix the authenticated customer mobile reference used by Orders, Order Detail, and Subscriptions (`state.mobile`).
 
-Create one common customer-app header at the `(customer)` layout level. The header is outside the individual page ScrollViews, so it remains fixed while page content scrolls. The existing Expo Router bottom tabs remain fixed as well.
+## Important regression fix
+The common-header phase must retain the Orders screen fix from the previous phase. The Zustand store field is `mobile`, not `customerMobile`. Orders, Order Detail, and Subscriptions now read `useAppStore((s) => s.mobile)`.
 
-## Behaviour
-
-- One shared header for customer app screens.
-- Header shows `Seedlings` and the current customer delivery address label.
-- Address is loaded from the existing `customers/{mobile}.addresses` data through the existing customer address service.
-- Customer tab root screens do not show a back button.
-- Inner customer screens show a back button in the same common header.
-- Login and OTP screens do not show the customer header.
-- Home no longer owns a duplicate header/address block.
-- Individual customer screens no longer render their own `Header`.
-- No Firebase collection/schema changes.
-- No product, cart, checkout, order, subscription, payment, or business-logic changes.
-
-## Layout
-
-```text
-Customer Layout
-├── Fixed common header
-├── Expo Router screen content
-│   └── individual page content may scroll
-└── Fixed bottom tab navigation (for tab routes)
-```
-
-## Verification
-
-`git diff --check` passed. TypeScript was not claimed because dependencies are not installed in the working source environment.
+## Not in scope
+- No CMS pages.
+- No Website marketing pages.
+- No Firebase schema changes.
+- No changes to order business logic.
+- No new product/payment/subscription functionality.

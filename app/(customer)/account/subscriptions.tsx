@@ -15,7 +15,7 @@ const addressText = (a: CustomerAddress) => [a.addressLine1, a.addressLine2, a.l
 const today = () => new Date().toISOString().slice(0, 10);
 
 export default function Subscriptions() {
-  const mobile = useAppStore((s) => s.customerMobile);
+  const mobile = useAppStore((s) => s.mobile);
   const params = useLocalSearchParams<{ productId?: string; planId?: string; quantity?: string }>();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [subs, setSubs] = useState<CustomerSubscription[]>([]);

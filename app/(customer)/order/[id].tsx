@@ -24,7 +24,7 @@ function formatDate(value: unknown) {
 
 export default function OrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const mobile = useAppStore((s) => s.customerMobile);
+  const mobile = useAppStore((s) => s.mobile);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

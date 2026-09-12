@@ -16,7 +16,7 @@ function dateText(value: unknown) { const d = dateObject(value); return d ? d.to
 function orderType(order: CustomerOrder) { return String(order.orderType ?? '').toLowerCase() === 'subscription' ? 'subscription' : 'one_time'; }
 
 export default function Orders() {
-  const mobile = useAppStore((s) => s.customerMobile);
+  const mobile = useAppStore((s) => s.mobile);
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [filter, setFilter] = useState<'all' | 'one_time' | 'subscription' | 'past'>('all');
   const [loading, setLoading] = useState(true);
