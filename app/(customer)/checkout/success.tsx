@@ -12,7 +12,7 @@ export default function Success() {
       <View style={{ alignItems: 'center', paddingTop: 55 }}>
         <Text style={{ fontSize: 24, fontWeight: '900', color: colors.greenDark, marginBottom: 18 }}>Seedlings</Text>
         <View style={{ width: 70, height: 70, borderRadius: 35, backgroundColor: colors.green, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#fff', fontSize: 38 }}>✓</Text>
+          <Text style={{ color: colors.white, fontSize: 38 }}>✓</Text>
         </View>
         <Text style={{ fontSize: 25, fontWeight: '900', color: colors.ink, marginTop: 16 }}>{isPreview ? 'Checkout Ready' : 'Order Placed!'}</Text>
         <Text style={{ color: colors.inkSoft, textAlign: 'center', marginTop: 6 }}>

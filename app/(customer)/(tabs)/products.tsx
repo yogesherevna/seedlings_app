@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { ProductCard, Screen, SearchBar } from '../../../components/UI';
-import { colors } from '../../../constants/theme';
+import { Chip, PageTitle, ProductCard, Screen, SearchBar } from '../../../components/UI';
+import { colors, spacing, typography } from '../../../constants/theme';
 import { getProducts, refreshProducts } from '../../../services/products/productService';
 import type { Product } from '../../../services/products/productService';
 
@@ -21,31 +21,36 @@ export default function Products() {
       if (forceRefresh) setRefreshing(true); else setLoading(true);
       const result = await getProducts({ forceRefresh });
       setProducts(result.products);
-      if (!forceRefresh) {
-        void refreshProducts().then((fresh) => setProducts(fresh)).catch(() => {});
-      }
-    } catch {
-      setError('Unable to load products. Please try again.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      if (!forceRefresh) void refreshProducts().then((fresh) => setProducts(fresh)).catch(() => {});
+    } catch { setError('Unable to load products. Please try again.'); }
+    finally { setLoading(false); setRefreshing(false); }
   };
-
   useEffect(() => { void load(); }, []);
 
-  const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category)))], [products]);
+  const categories = useMemo(() => ['All', ...Array.from(new Set(products.map((p) => p.category).filter(Boolean)))], [products]);
   const moods = useMemo(() => ['All', ...Array.from(new Set(products.flatMap((p) => p.moods).filter(Boolean)))], [products]);
   const list = products.filter((p) => (cat === 'All' || p.category === cat) && (mood === 'All' || p.moods.some((value) => value.toLowerCase() === mood.toLowerCase())) && p.name.toLowerCase().includes(q.toLowerCase()));
 
   return <Screen>
-    <Text style={{ fontSize: 24, fontWeight: '900', color: colors.ink, marginTop: 10 }}>Products</Text>
+    <PageTitle title="Products" subtitle="Fresh microgreens, ready for your table." />
     <SearchBar value={q} onChangeText={setQ} />
-    <Text style={{ fontSize: 13, fontWeight: '800', color: colors.inkSoft, marginTop: 12 }}>Category</Text>
-    <View style={{ flexDirection: 'row', gap: 7, marginTop: 7, flexWrap: 'wrap' }}>
-      {categories.map((c) => <Pressable key={c} onPress={() => setCat(c)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: cat === c ? colors.greenTint : '#fff', borderWidth: 1, borderColor: cat === c ? colors.greenDark : colors.line }}><Text style={{ fontSize: 12, fontWeight: '700', color: cat === c ? colors.greenDark : colors.inkSoft }}>{c}</Text></Pressable>)}
-    </View>
-    {moods.length > 1 ? <><Text style={{ fontSize: 13, fontWeight: '800', color: colors.inkSoft, marginTop: 9 }}>Shop by mood</Text><View style={{ flexDirection: 'row', gap: 7, marginTop: 7, marginBottom: 10, flexWrap: 'wrap' }}>{moods.map((m) => <Pressable key={m} onPress={() => setMood(m)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: mood === m ? colors.orangeTint : '#fff', borderWidth: 1, borderColor: mood === m ? colors.orange : colors.line }}><Text style={{ fontSize: 12, fontWeight: '700', color: mood === m ? colors.orangeDark : colors.inkSoft }}>{m}</Text></Pressable>)}</View></> : null}
-    {loading ? <View style={{ paddingVertical: 40, alignItems: 'center' }}><ActivityIndicator color={colors.greenDark} /><Text style={{ color: colors.inkSoft, marginTop: 8 }}>Loading products…</Text></View> : error ? <View style={{ paddingVertical: 30, alignItems: 'center' }}><Text style={{ color: colors.inkSoft }}>{error}</Text><Pressable onPress={() => load(true)} style={{ marginTop: 12 }}><Text style={{ color: colors.greenDark, fontWeight: '800' }}>{refreshing ? 'Refreshing…' : 'Retry'}</Text></Pressable></View> : list.length === 0 ? <Text style={{ color: colors.inkSoft, paddingVertical: 30 }}>No products found.</Text> : <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>{list.map((p) => <ProductCard key={p.id} product={p} onPress={() => router.push({ pathname: '/(customer)/product/[id]', params: { id: p.id } })} />)}</View>}
+
+    <Text style={styles.filterLabel}>Category</Text>
+    <View style={styles.chips}>{categories.map((c) => <Chip key={c} label={c} selected={cat === c} onPress={() => setCat(c)} />)}</View>
+
+    {moods.length > 1 ? <><Text style={styles.filterLabel}>Shop by mood</Text><View style={styles.chips}>{moods.map((m) => <Chip key={m} label={m} selected={mood === m} accent="orange" onPress={() => setMood(m)} />)}</View></> : null}
+
+    {loading ? <View style={styles.state}><ActivityIndicator size="large" color={colors.greenDark} /><Text style={styles.stateText}>Loading fresh products…</Text></View> : error ? <View style={styles.state}><Text style={styles.stateText}>{error}</Text><Pressable onPress={() => load(true)} style={styles.retry}><Text style={styles.retryText}>{refreshing ? 'Refreshing…' : 'Retry'}</Text></Pressable></View> : list.length === 0 ? <View style={styles.state}><Text style={styles.noTitle}>No products found</Text><Text style={styles.stateText}>Try another search or category.</Text></View> : <View style={styles.grid}>{list.map((p) => <ProductCard key={p.id} product={p} onPress={() => router.push({ pathname: '/(customer)/product/[id]', params: { id: p.id } })} />)}</View>}
   </Screen>;
 }
+
+const styles = {
+  filterLabel: { fontFamily: typography.fontFamily, fontSize: 12, fontWeight: '900' as const, color: colors.inkSoft, marginTop: spacing.lg, marginBottom: 7 },
+  chips: { flexDirection: 'row' as const, gap: 7, flexWrap: 'wrap' as const },
+  grid: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, justifyContent: 'space-between' as const, marginTop: spacing.lg },
+  state: { alignItems: 'center' as const, paddingVertical: 52 },
+  stateText: { fontFamily: typography.fontFamily, color: colors.inkSoft, fontSize: 13, marginTop: 9, textAlign: 'center' as const },
+  noTitle: { fontFamily: typography.fontFamily, color: colors.ink, fontSize: 17, fontWeight: '900' as const },
+  retry: { marginTop: 12, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999, backgroundColor: colors.greenTint },
+  retryText: { fontFamily: typography.fontFamily, color: colors.greenDark, fontWeight: '900' as const, fontSize: 12 },
+};

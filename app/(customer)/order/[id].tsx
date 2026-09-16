@@ -57,7 +57,7 @@ export default function OrderDetail() {
 
   return <Screen>
 
-    <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 14, padding: 16, marginTop: 8 }}>
+    <View style={{ backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 14, padding: 16, marginTop: 8 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
         <Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink }}>{order.orderNumber ? `#${order.orderNumber}` : `#${order.id}`}</Text>
         <Text style={{ fontWeight: '900', color: colors.greenDark }}>{prettyStatus(order.status)}</Text>
@@ -75,7 +75,7 @@ export default function OrderDetail() {
       </View>
     </View>
 
-    <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 14, padding: 16, marginTop: 12 }}>
+    <View style={{ backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 14, padding: 16, marginTop: 12 }}>
       <Text style={{ fontWeight: '900', color: colors.ink, marginBottom: 10 }}>Delivery Address</Text>
       <Text style={{ fontWeight: '800', color: colors.ink }}>{String(address?.name ?? '')}</Text>
       <Text style={{ color: colors.inkSoft, marginTop: 4 }}>{String(address?.addressLine1 ?? '')}</Text>
@@ -84,7 +84,7 @@ export default function OrderDetail() {
       <Text style={{ color: colors.inkSoft, marginTop: 4 }}>{String(address?.mobileNumber ?? order.customerMobile ?? '')}</Text>
     </View>
 
-    <View style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 14, padding: 16, marginTop: 12 }}>
+    <View style={{ backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 14, padding: 16, marginTop: 12 }}>
       <Text style={{ fontWeight: '900', color: colors.ink, marginBottom: 10 }}>Payment & Total</Text>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 7 }}><Text style={{ color: colors.inkSoft }}>Subtotal</Text><Text>{money(order.subtotal)}</Text></View>
       {discount > 0 ? <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 7 }}><Text style={{ color: colors.greenDark }}>Discount</Text><Text style={{ color: colors.greenDark }}>−{money(discount)}</Text></View> : null}

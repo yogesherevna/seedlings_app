@@ -5,7 +5,7 @@ import type { CartItem } from '../cart/cartService';
 import type { CustomerAddress } from '../customerAddresses';
 import type { PaymentTransaction } from '../payments/paymentService';
 import { checkProductAvailability, nextWeekSaturday } from './customerOrderAvailability';
-import { getActiveOneTimeDeliveryCharge } from './deliveryChargeService';
+import { calculateCheckoutDeliveryCharges } from './deliveryChargeService';
 import { stripUndefined } from '../core/firestoreData';
 
 export type CreateCustomerOrderInput = { mobile: string; items: CartItem[]; address: CustomerAddress; paymentMethod?: 'online'; deliverySlot: string; shortageDecision?: 'continue' | 'contact' };
@@ -74,8 +74,9 @@ export async function createCustomerOneTimeOrder(input: CreateCustomerOrderInput
   const mrpSubtotal = orderItems.reduce((sum, item) => sum + Number(item.mrp) * Number(item.quantity), 0);
   const subtotal = orderItems.reduce((sum, item) => sum + Number(item.lineTotal), 0);
   const productSavings = Math.max(0, mrpSubtotal - subtotal);
-  const charge = await getActiveOneTimeDeliveryCharge();
-  const deliveryFee = charge?.amount ?? 0;
+  const delivery = await calculateCheckoutDeliveryCharges({ pincode: String(selectedAddress.pincode ?? ''), oneTime: true, subscriptions: [] });
+  const charge = delivery.oneTime;
+  const deliveryFee = charge.finalCharge;
   const total = subtotal + deliveryFee;
   const requestedAvailabilityGrams = availabilityResults.reduce((sum, result) => sum + result.requestedGrams, 0);
   const availableAvailabilityGrams = availabilityResults.reduce((sum, result) => sum + result.availableGrams, 0);
@@ -102,9 +103,10 @@ export async function createCustomerOneTimeOrder(input: CreateCustomerOrderInput
     notes: '',
     orderType: 'one_time',
     subscriptionId: null,
-    deliveryChargeId: charge?.id || '',
-    deliveryChargeName: charge?.name || '',
+    deliveryChargeId: charge.sourceId,
+    deliveryChargeName: charge.sourceName,
     deliveryChargeSnapshot: deliveryFee,
+    deliveryChargeDetails: charge.snapshot,
     packingStatus: 'pending',
     requiresCustomerContact: input.shortageDecision === 'contact',
     availabilityRequestedGrams: requestedAvailabilityGrams,

@@ -9,7 +9,7 @@ import { getCustomerAddresses, type CustomerAddress } from '../../../services/cu
 import { createCustomerOneTimeOrder } from '../../../services/orders/orderService';
 import { checkProductAvailability, nextWeekSaturday } from '../../../services/orders/customerOrderAvailability';
 import { confirmHarvestShortage } from '../../../services/orders/customerAlerts';
-import { getActiveOneTimeDeliveryCharge } from '../../../services/orders/deliveryChargeService';
+import { calculateCheckoutDeliveryCharges, type CheckoutDeliveryCharges } from '../../../services/orders/deliveryChargeService';
 import { isPaymentGatewayConfigured } from '../../../services/payments/paymentService';
 import { getProducts, type Product } from '../../../services/products/productService';
 
@@ -22,6 +22,7 @@ type DeliverySlot = (typeof DELIVERY_SLOTS)[number];
 
 export default function Checkout() {
   const cart = useAppStore((s) => s.cart);
+  const subscriptionCart = useAppStore((s) => s.subscriptionCart);
   const mobile = useAppStore((s) => s.mobile);
   const totals = useMemo(() => getCartTotals(cart), [cart]);
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
@@ -31,7 +32,7 @@ export default function Checkout() {
   const [addressError, setAddressError] = useState('');
   const [validationError, setValidationError] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
-  const [deliveryCharge, setDeliveryCharge] = useState<{ name: string; amount: number } | null>(null);
+  const [deliveryCharges, setDeliveryCharges] = useState<CheckoutDeliveryCharges | null>(null);
   const [chargeLoading, setChargeLoading] = useState(true);
 
   const loadAddresses = useCallback(async () => {
@@ -50,23 +51,29 @@ export default function Checkout() {
   }, [mobile]);
 
   const loadDeliveryCharge = useCallback(async () => {
+    const selected = addresses.find((item) => item.id === selectedAddressId);
+    const pincode = String(selected?.pincode ?? '').replace(/\D/g, '');
     setChargeLoading(true);
+    setDeliveryCharges(null);
+    if (!/^\d{6}$/.test(pincode)) { setChargeLoading(false); return; }
     try {
-      const charge = await getActiveOneTimeDeliveryCharge();
-      setDeliveryCharge(charge ? { name: charge.name, amount: charge.amount } : null);
+      const result = await calculateCheckoutDeliveryCharges({
+        pincode,
+        oneTime: cart.length > 0,
+        subscriptions: subscriptionCart.map((item) => ({ planId: item.planId, planName: item.planName })),
+      });
+      setDeliveryCharges(result);
     } catch (error) {
-      setDeliveryCharge(null);
-      setValidationError(error instanceof Error ? error.message : 'Unable to load the configured delivery charge.');
-    } finally {
-      setChargeLoading(false);
-    }
-  }, []);
+      setValidationError(error instanceof Error ? error.message : 'Unable to calculate delivery charges.');
+    } finally { setChargeLoading(false); }
+  }, [addresses, selectedAddressId, cart.length, subscriptionCart]);
 
-  useEffect(() => { void loadAddresses(); void loadDeliveryCharge(); }, [loadAddresses, loadDeliveryCharge]);
+  useEffect(() => { void loadAddresses(); }, [loadAddresses]);
+  useEffect(() => { void loadDeliveryCharge(); }, [loadDeliveryCharge]);
   useFocusEffect(useCallback(() => { void loadAddresses(); void loadDeliveryCharge(); }, [loadAddresses, loadDeliveryCharge]));
 
   const selectedAddress = addresses.find((item) => item.id === selectedAddressId);
-  const checkoutTotal = totals.subtotal + (deliveryCharge?.amount ?? 0);
+  const checkoutTotal = totals.subtotal + (deliveryCharges?.total ?? 0);
 
   const validateCheckout = async () => {
     setValidationError('');
@@ -75,8 +82,8 @@ export default function Checkout() {
     if (!mobile) return setValidationError('Customer session not found. Please log in again.');
     if (!selectedSlot) return setValidationError('Please select a weekend delivery slot.');
     if (chargeLoading) return setValidationError('Delivery charge is still loading. Please try again.');
-    if (!deliveryCharge) return setValidationError('No active one-time delivery charge is configured. Please try again later.');
-    if (cart.some((item) => item.purchaseMode !== 'one-time')) return setValidationError('Subscription items must be continued from Cart using the subscription flow.');
+    if (!deliveryCharges) return setValidationError('Delivery charge could not be calculated. Please try again later.');
+    if (subscriptionCart.length > 0) return setValidationError('Subscription items are in the cart and mixed checkout will be enabled in the unified checkout phase.');
 
     setPlacingOrder(true);
     try {
@@ -158,12 +165,14 @@ export default function Checkout() {
         <View style={styles.line}><Text style={styles.muted}>MRP</Text><Text style={styles.muted}>₹{totals.mrpSubtotal}</Text></View>
         <View style={styles.line}><Text style={styles.muted}>Subtotal</Text><Text style={styles.muted}>₹{totals.subtotal}</Text></View>
         {totals.savings > 0 ? <View style={styles.line}><Text style={styles.saving}>You save</Text><Text style={styles.saving}>−₹{totals.savings}</Text></View> : null}
-        <View style={styles.line}><Text style={styles.muted}>Delivery</Text><Text style={styles.muted}>Calculated on order</Text></View>
-        <View style={[styles.line, { borderBottomWidth: 0 }]}><Text style={styles.totalLabel}>Items subtotal</Text><Text style={styles.total}>₹{totals.subtotal}</Text></View>
-        <Text style={styles.muted}>The configured active one-time delivery charge is applied when the order is created.</Text>
+        <View style={styles.line}><Text style={styles.muted}>Delivery</Text><Text style={styles.muted}>{chargeLoading ? 'Calculating…' : deliveryCharges?.oneTime.isFree ? '₹0 — FREE' : `₹${deliveryCharges?.oneTime.finalCharge ?? 0}`}</Text></View>
+        {deliveryCharges?.oneTime.savings > 0 ? <View style={styles.line}><Text style={styles.saving}>You saved on delivery</Text><Text style={styles.saving}>−₹{deliveryCharges.oneTime.savings}</Text></View> : null}
+        <View style={[styles.line, { borderBottomWidth: 0 }]}><Text style={styles.totalLabel}>Grand total</Text><Text style={styles.total}>₹{checkoutTotal}</Text></View>
+        {deliveryCharges?.savingsTotal > 0 ? <Text style={styles.saving}>You saved ₹{deliveryCharges.savingsTotal} on delivery</Text> : null}
+        <Text style={styles.muted}>Delivery uses the active pincode-specific Geolocation Master charge when available; otherwise the matching Delivery Charges Master fallback is used.</Text>
       </View>
 
-      {deliveryCharge ? <Text style={styles.muted}>Configured delivery charge: {deliveryCharge.name || 'Delivery'} — ₹{deliveryCharge.amount}</Text> : null}
+      {deliveryCharges?.oneTime.sourceName ? <Text style={styles.muted}>Delivery charge source: {deliveryCharges.oneTime.sourceName}</Text> : null}
       {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
       {validationError ? <Text style={styles.error}>{validationError}</Text> : null}
       <View style={{ marginBottom: 18 }}><Button title={placingOrder ? 'Placing Order…' : 'Place Order'} onPress={placingOrder ? () => {} : validateCheckout} /></View>
@@ -174,16 +183,16 @@ export default function Checkout() {
 const styles = {
   heading: { fontSize: 18, fontWeight: '900' as const, color: colors.ink, marginTop: 16, marginBottom: 4 },
   subheading: { fontSize: 16, fontWeight: '800' as const, color: colors.ink, marginBottom: 8 },
-  card: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 15, marginBottom: 8 },
+  card: { backgroundColor: colors.panel, borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 15, marginBottom: 8 },
   selectedCard: { borderColor: colors.green, borderWidth: 2 },
-  stateCard: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 18, marginBottom: 8, alignItems: 'center' as const, gap: 8 },
+  stateCard: { backgroundColor: colors.panel, borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 18, marginBottom: 8, alignItems: 'center' as const, gap: 8 },
   addressHeader: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, marginBottom: 5 },
   bold: { fontWeight: '900' as const, color: colors.ink },
   muted: { color: colors.inkSoft, marginTop: 4, lineHeight: 19 },
   radio: { color: colors.inkFaint, fontSize: 18 },
   selectedMark: { color: colors.greenDark, fontSize: 18 },
   paymentText: { color: colors.ink, fontWeight: '800' as const },
-  paymentNotice: { color: colors.inkSoft, backgroundColor: '#f7f7f2', borderRadius: 10, padding: 10, marginTop: 8, lineHeight: 18 },
+  paymentNotice: { color: colors.inkSoft, backgroundColor: colors.paper, borderRadius: 10, padding: 10, marginTop: 8, lineHeight: 18 },
   line: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: colors.lineSoft },
   saving: { color: colors.greenDark, fontWeight: '800' as const },
   totalLabel: { fontWeight: '900' as const, color: colors.ink },

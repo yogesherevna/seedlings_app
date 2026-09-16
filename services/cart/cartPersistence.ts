@@ -15,6 +15,8 @@ export type PersistedCartItem = Product & {
   planName?: string;
   frequency?: string;
   deliveriesPerTerm?: number;
+  deliveryChargeMode?: string;
+  deliveryCharge?: number;
   startDate?: string;
 };
 
@@ -77,6 +79,8 @@ function parseRows(rows: Array<{ cart_key: string; product_id: string; selected_
         planName: parsed.planName || 'Subscription',
         ...(parsed.frequency ? { frequency: parsed.frequency } : {}),
         ...(Number.isFinite(Number(parsed.deliveriesPerTerm)) ? { deliveriesPerTerm: Number(parsed.deliveriesPerTerm) } : {}),
+        ...(parsed.deliveryChargeMode ? { deliveryChargeMode: parsed.deliveryChargeMode } : {}),
+        ...(Number.isFinite(Number(parsed.deliveryCharge)) ? { deliveryCharge: Number(parsed.deliveryCharge) } : {}),
         startDate: parsed.startDate,
       });
     } else {

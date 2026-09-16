@@ -7,6 +7,7 @@ export type Product = {
   name: string;
   sku?: string;
   slug?: string;
+  shortDescription?: string;
   description: string;
   price: number;
   mrp?: number;
@@ -80,7 +81,8 @@ function normalize(docId: string, raw: SalesProductDocument): Product {
     name: stringValue(raw.name, 'Unnamed Product'),
     ...(raw.sku ? { sku: stringValue(raw.sku) } : {}),
     ...(raw.slug ? { slug: stringValue(raw.slug) } : {}),
-    description: stringValue(raw.description ?? raw.shortDescription),
+    ...(stringValue(raw.shortDescription) ? { shortDescription: stringValue(raw.shortDescription) } : {}),
+    description: stringValue(raw.description),
     price: numberValue(raw.sellingPrice),
     ...(mrpValue > 0 ? { mrp: mrpValue } : {}),
     ...(weightGrams ? { weightGrams } : {}),

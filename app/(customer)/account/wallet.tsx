@@ -34,7 +34,7 @@ export default function ScreenPage() {
   return <Screen>
 
     {loading ? <View style={{ paddingVertical: 40, alignItems: 'center' }}><ActivityIndicator /><Text style={{ marginTop: 10, color: colors.inkFaint }}>Loading wallet…</Text></View> :
-      error ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 18 }}><Text style={{ color: colors.ink }}>{error}</Text></View> :
+      error ? <View style={{ backgroundColor: colors.panel, borderRadius: 14, padding: 18 }}><Text style={{ color: colors.ink }}>{error}</Text></View> :
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} />} showsVerticalScrollIndicator={false}>
         <View style={{ backgroundColor: colors.greenTint, borderRadius: 16, padding: 22, alignItems: 'center' }}>
           <Text style={{ color: colors.greenDark, fontWeight: '800' }}>Available Balance</Text>
@@ -42,7 +42,7 @@ export default function ScreenPage() {
           {wallet?.balance == null && <Text style={{ color: colors.inkFaint, fontSize: 12, marginTop: 6, textAlign: 'center' }}>Balance is shown when the trusted wallet ledger provides it.</Text>}
         </View>
         <Text style={{ fontSize: 18, fontWeight: '900', color: colors.ink, marginTop: 22 }}>Recent Activity</Text>
-        {!wallet?.transactions.length ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginTop: 10 }}><Text style={{ color: colors.inkFaint }}>No wallet transactions found.</Text></View> : wallet.transactions.map(t => <View key={t.id} style={{ backgroundColor: '#fff', borderRadius: 14, padding: 15, marginTop: 10 }}><Text style={{ fontWeight: '800', color: colors.greenDark }}>{amountLabel(t)} · {prettyWalletType(t.type)}</Text>{t.description ? <Text style={{ color: colors.ink, marginTop: 4 }}>{t.description}</Text> : null}{t.referenceId ? <Text style={{ color: colors.inkFaint, fontSize: 12, marginTop: 4 }}>Reference: {t.referenceId}</Text> : null}{t.status ? <Text style={{ color: colors.inkFaint, fontSize: 12, marginTop: 4 }}>Status: {t.status}</Text> : null}</View>)}
+        {!wallet?.transactions.length ? <View style={{ backgroundColor: colors.panel, borderRadius: 14, padding: 16, marginTop: 10 }}><Text style={{ color: colors.inkFaint }}>No wallet transactions found.</Text></View> : wallet.transactions.map(t => <View key={t.id} style={{ backgroundColor: colors.panel, borderRadius: 14, padding: 15, marginTop: 10 }}><Text style={{ fontWeight: '800', color: colors.greenDark }}>{amountLabel(t)} · {prettyWalletType(t.type)}</Text>{t.description ? <Text style={{ color: colors.ink, marginTop: 4 }}>{t.description}</Text> : null}{t.referenceId ? <Text style={{ color: colors.inkFaint, fontSize: 12, marginTop: 4 }}>Reference: {t.referenceId}</Text> : null}{t.status ? <Text style={{ color: colors.inkFaint, fontSize: 12, marginTop: 4 }}>Status: {t.status}</Text> : null}</View>)}
       </ScrollView>}
   </Screen>;
 }

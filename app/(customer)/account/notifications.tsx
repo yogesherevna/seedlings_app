@@ -19,7 +19,7 @@ function formatDate(value: unknown) {
 
 function NotificationCard({ item }: { item: CustomerNotification }) {
   return (
-    <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: item.read ? 0 : 1, borderColor: item.read ? '#fff' : '#dfe7df' }}>
+    <View style={{ backgroundColor: colors.panel, borderRadius: 14, padding: 16, marginBottom: 10, borderWidth: item.read ? 0 : 1, borderColor: item.read ? colors.panel : colors.lineSoft }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
         <Text style={{ flex: 1, fontWeight: '900', color: colors.ink }}>{item.title}</Text>
         {!item.read && <Text style={{ fontSize: 11, fontWeight: '800', color: colors.inkSoft }}>NEW</Text>}
@@ -52,7 +52,7 @@ export default function ScreenPage() {
     <Screen>
 
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} />} contentContainerStyle={{ paddingBottom: 30 }}>
-        {loading ? <View style={{ padding: 30, alignItems: 'center' }}><ActivityIndicator /></View> : error ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16 }}><Text style={{ color: colors.ink }}>{error}</Text></View> : items.length === 0 ? <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20 }}><Text style={{ fontWeight: '900', color: colors.ink }}>No notifications</Text><Text style={{ color: colors.inkSoft, marginTop: 6 }}>You’ll see order and subscription updates here.</Text></View> : items.map((item) => <NotificationCard key={item.id} item={item} />)}
+        {loading ? <View style={{ padding: 30, alignItems: 'center' }}><ActivityIndicator /></View> : error ? <View style={{ backgroundColor: colors.panel, borderRadius: 14, padding: 16 }}><Text style={{ color: colors.ink }}>{error}</Text></View> : items.length === 0 ? <View style={{ backgroundColor: colors.panel, borderRadius: 14, padding: 20 }}><Text style={{ fontWeight: '900', color: colors.ink }}>No notifications</Text><Text style={{ color: colors.inkSoft, marginTop: 6 }}>You’ll see order and subscription updates here.</Text></View> : items.map((item) => <NotificationCard key={item.id} item={item} />)}
       </ScrollView>
     </Screen>
   );

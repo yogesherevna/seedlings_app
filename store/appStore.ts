@@ -41,7 +41,7 @@ type State = {
   hydrateCart: () => void;
   hydrateSession: () => Promise<void>;
   addToCart: (product: Product, weight?: string) => void;
-  addSubscriptionToCart: (product: Product, plan: { id: string; name?: string; frequency?: string; deliveriesPerTerm?: number; price?: number }, startDate: string, quantity?: number) => void;
+  addSubscriptionToCart: (product: Product, plan: { id: string; name?: string; frequency?: string; deliveriesPerTerm?: number; price?: number; deliveryChargeMode?: string; deliveryCharge?: number }, startDate: string, quantity?: number) => void;
   removeFromCart: (id: string, weight?: string) => void;
   removeSubscriptionFromCart: (productId: string, planId: string, startDate: string) => void;
   changeQuantity: (id: string, delta: number, weight?: string) => void;
@@ -138,7 +138,7 @@ export const useAppStore = create<State>((set, get) => ({
       return;
     }
     const subscriptionPrice = Number(plan.price ?? product.price ?? 0);
-    const item: SubscriptionCartItem = { ...product, quantity: normalizedQuantity, selectedWeight: product.defaultWeight, price: subscriptionPrice, mrp: subscriptionPrice, planId, planName: plan.name || 'Subscription', ...(plan.frequency ? { frequency: plan.frequency } : {}), ...(Number.isFinite(Number(plan.deliveriesPerTerm)) ? { deliveriesPerTerm: Number(plan.deliveriesPerTerm) } : {}), startDate };
+    const item: SubscriptionCartItem = { ...product, quantity: normalizedQuantity, selectedWeight: product.defaultWeight, price: subscriptionPrice, mrp: subscriptionPrice, planId, planName: plan.name || 'Subscription', ...(plan.frequency ? { frequency: plan.frequency } : {}), ...(Number.isFinite(Number(plan.deliveriesPerTerm)) ? { deliveriesPerTerm: Number(plan.deliveriesPerTerm) } : {}), ...(plan.deliveryChargeMode ? { deliveryChargeMode: plan.deliveryChargeMode } : {}), ...(Number.isFinite(Number(plan.deliveryCharge)) ? { deliveryCharge: Number(plan.deliveryCharge) } : {}), startDate };
     set((state) => ({ subscriptionCart: [...state.subscriptionCart, item] })); upsertSubscriptionCartItem(scope, item);
   },
 
@@ -164,7 +164,7 @@ export const useAppStore = create<State>((set, get) => ({
   refreshCartProducts: (products) => {
     const byId = new Map(products.map((product) => [product.id, product]));
     const oneTime = get().cart.map((item) => { const product = byId.get(item.id); return product ? { ...product, quantity: item.quantity, selectedWeight: product.defaultWeight } : item; });
-    const subscriptions = get().subscriptionCart.map((item) => { const product = byId.get(item.id); return product ? { ...product, quantity: item.quantity, selectedWeight: product.defaultWeight, price: item.price, mrp: item.mrp, currency: item.currency, imageUrl: item.imageUrl, planId: item.planId, planName: item.planName, ...(item.frequency ? { frequency: item.frequency } : {}), ...(item.deliveriesPerTerm !== undefined ? { deliveriesPerTerm: item.deliveriesPerTerm } : {}), startDate: item.startDate } : item; });
+    const subscriptions = get().subscriptionCart.map((item) => { const product = byId.get(item.id); return product ? { ...product, quantity: item.quantity, selectedWeight: product.defaultWeight, price: item.price, mrp: item.mrp, currency: item.currency, imageUrl: item.imageUrl, planId: item.planId, planName: item.planName, ...(item.frequency ? { frequency: item.frequency } : {}), ...(item.deliveriesPerTerm !== undefined ? { deliveriesPerTerm: item.deliveriesPerTerm } : {}), ...(item.deliveryChargeMode ? { deliveryChargeMode: item.deliveryChargeMode } : {}), ...(item.deliveryCharge !== undefined ? { deliveryCharge: item.deliveryCharge } : {}), startDate: item.startDate } : item; });
     const unified = { oneTimeItems: oneTime, subscriptionItems: subscriptions };
     set({ cart: oneTime, subscriptionCart: subscriptions });
     replaceUnifiedCart(scopeFor(get()), unified);

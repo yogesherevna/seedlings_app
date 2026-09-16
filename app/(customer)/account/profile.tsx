@@ -60,15 +60,15 @@ export default function CustomerProfileScreen() {
           <Text style={{ color: colors.inkSoft, marginTop: 12 }}>Loading profile…</Text>
         </View>
       ) : (
-        <View style={{ backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 16 }}>
+        <View style={{ backgroundColor: colors.panel, borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 16 }}>
           <Text style={{ color: colors.inkSoft, fontSize: 12, fontWeight: '700', marginBottom: 7 }}>MOBILE NUMBER</Text>
           <TextInput value={`+91 ${mobile}`} editable={false} style={{ backgroundColor: colors.block, borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.inkSoft, fontSize: 16 }} />
 
           <Text style={{ color: colors.inkSoft, fontSize: 12, fontWeight: '700', marginTop: 18, marginBottom: 7 }}>NAME</Text>
-          <TextInput value={name} onChangeText={setName} placeholder="Enter your name" placeholderTextColor={colors.inkFaint} autoCapitalize="words" style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: colors.line, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.ink, fontSize: 16 }} />
+          <TextInput value={name} onChangeText={setName} placeholder="Enter your name" placeholderTextColor={colors.inkFaint} autoCapitalize="words" style={{ backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.ink, fontSize: 16 }} />
 
           <Text style={{ color: colors.inkSoft, fontSize: 12, fontWeight: '700', marginTop: 18, marginBottom: 7 }}>EMAIL</Text>
-          <TextInput value={email} onChangeText={setEmail} placeholder="Enter your email (optional)" placeholderTextColor={colors.inkFaint} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: colors.line, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.ink, fontSize: 16 }} />
+          <TextInput value={email} onChangeText={setEmail} placeholder="Enter your email (optional)" placeholderTextColor={colors.inkFaint} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} style={{ backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.ink, fontSize: 16 }} />
 
           <Text style={{ color: colors.inkSoft, fontSize: 12, fontWeight: '700', marginTop: 18, marginBottom: 7 }}>PREFERRED DELIVERY DAY</Text>
           <TextInput value={preferredDeliveryDay} editable={false} style={{ backgroundColor: colors.block, borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.inkSoft, fontSize: 16 }} />

@@ -88,7 +88,7 @@ export default function Subscriptions() {
 
   return <Screen>
 
-    <View style={styles.panel}><Text style={styles.title}>My Subscription</Text>{active ? <><Text style={styles.productName}>{active.productName || 'Subscription'}</Text><Text style={styles.muted}>{active.sellingOptionLabel || 'Pack'} × {active.quantity || 1} · {active.frequency || ''} · Saturday delivery</Text><View style={styles.kpis}>{[['Status', prettySubscriptionStatus(active.status)], ['Deliveries', String(active.totalDeliveries ?? '—')], ['Remaining', String(active.remainingDeliveries ?? '—')]].map(([label, value]) => <View key={label} style={styles.kpi}><Text style={styles.small}>{label}</Text><Text style={styles.kpiValue}>{value}</Text></View>)}</View><Text style={styles.muted}>Next delivery: <Text style={styles.bold}>{active.nextDeliveryDate || '—'}</Text></Text><View style={styles.actions}>{active.status === 'active' ? <Pressable disabled={busy} onPress={() => update('pause')} style={styles.outline}><Text style={styles.greenText}>Pause</Text></Pressable> : null}{active.status === 'paused' ? <Pressable disabled={busy} onPress={() => update('resume')} style={styles.primary}><Text style={styles.white}>Resume</Text></Pressable> : null}{['active', 'paused'].includes(String(active.status)) ? <Pressable disabled={busy} onPress={() => Alert.alert('Cancel subscription', 'Cancel this subscription?', [{ text: 'Keep', style: 'cancel' }, { text: 'Cancel', style: 'destructive', onPress: () => { void update('cancel'); } }])} style={styles.outline}><Text style={{ color: '#a33', fontWeight: '900' }}>Cancel</Text></Pressable> : null}</View></> : <Text style={styles.muted}>No active subscription found.</Text>}</View>
+    <View style={styles.panel}><Text style={styles.title}>My Subscription</Text>{active ? <><Text style={styles.productName}>{active.productName || 'Subscription'}</Text><Text style={styles.muted}>{active.sellingOptionLabel || 'Pack'} × {active.quantity || 1} · {active.frequency || ''} · Saturday delivery</Text><View style={styles.kpis}>{[['Status', prettySubscriptionStatus(active.status)], ['Deliveries', String(active.totalDeliveries ?? '—')], ['Remaining', String(active.remainingDeliveries ?? '—')]].map(([label, value]) => <View key={label} style={styles.kpi}><Text style={styles.small}>{label}</Text><Text style={styles.kpiValue}>{value}</Text></View>)}</View><Text style={styles.muted}>Next delivery: <Text style={styles.bold}>{active.nextDeliveryDate || '—'}</Text></Text><View style={styles.actions}>{active.status === 'active' ? <Pressable disabled={busy} onPress={() => update('pause')} style={styles.outline}><Text style={styles.greenText}>Pause</Text></Pressable> : null}{active.status === 'paused' ? <Pressable disabled={busy} onPress={() => update('resume')} style={styles.primary}><Text style={styles.white}>Resume</Text></Pressable> : null}{['active', 'paused'].includes(String(active.status)) ? <Pressable disabled={busy} onPress={() => Alert.alert('Cancel subscription', 'Cancel this subscription?', [{ text: 'Keep', style: 'cancel' }, { text: 'Cancel', style: 'destructive', onPress: () => { void update('cancel'); } }])} style={styles.outline}><Text style={{ color: colors.danger, fontWeight: '900' }}>Cancel</Text></Pressable> : null}</View></> : <Text style={styles.muted}>No active subscription found.</Text>}</View>
 
     <Text style={styles.section}>Available plans</Text>{plans.length ? plans.map((plan) => <Pressable key={plan.id} onPress={() => setSelectedPlan(plan.id)} style={[styles.plan, selectedPlan === plan.id && styles.planSelected]}><View style={styles.row}><View style={{ flex: 1 }}><Text style={styles.planName}>{plan.name}</Text><Text style={styles.muted}>{plan.frequency}{plan.deliveriesPerTerm ? ` · ${plan.deliveriesPerTerm} deliveries` : ''} · Saturday</Text></View><Text style={styles.price}>{money(plan.price)}</Text></View>{selectedPlan === plan.id ? <Text style={styles.greenText}>Selected</Text> : null}</Pressable>) : <Text style={styles.muted}>No active subscription plans are available.</Text>}
 
@@ -100,7 +100,7 @@ export default function Subscriptions() {
 }
 
 const styles = {
-  panel: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 16, marginBottom: 12 },
+  panel: { backgroundColor: colors.panel, borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 16, marginBottom: 12 },
   title: { fontSize: 18, fontWeight: '900' as const, color: colors.ink },
   productName: { fontSize: 17, fontWeight: '900' as const, color: colors.greenDark, marginTop: 12 },
   muted: { color: colors.inkSoft, marginTop: 5, lineHeight: 20 as const },
@@ -112,17 +112,17 @@ const styles = {
   actions: { flexDirection: 'row' as const, gap: 8, marginTop: 12 },
   outline: { flex: 1, borderWidth: 1, borderColor: colors.green, borderRadius: 12, padding: 13, alignItems: 'center' as const },
   primary: { flex: 1, backgroundColor: colors.green, borderRadius: 12, padding: 13, alignItems: 'center' as const },
-  white: { color: '#fff', fontWeight: '900' as const },
+  white: { color: colors.white, fontWeight: '900' as const },
   greenText: { color: colors.greenDark, fontWeight: '900' as const },
   section: { fontSize: 18, fontWeight: '900' as const, color: colors.ink, marginTop: 6, marginBottom: 10 },
-  plan: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 15, marginBottom: 10 },
+  plan: { backgroundColor: colors.panel, borderRadius: 14, borderWidth: 1, borderColor: colors.lineSoft, padding: 15, marginBottom: 10 },
   planSelected: { borderColor: colors.green, backgroundColor: colors.greenTint },
   row: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const, gap: 10 },
   planName: { fontSize: 16, fontWeight: '900' as const, color: colors.ink },
   price: { fontSize: 18, fontWeight: '900' as const, color: colors.greenDark },
   address: { borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 10, padding: 11, marginTop: 8 },
   label: { fontWeight: '900' as const, color: colors.ink, marginTop: 14, marginBottom: 6 },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 10, padding: 11 },
+  input: { backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 10, padding: 11 },
   primaryButton: { backgroundColor: colors.green, borderRadius: 13, padding: 15, alignItems: 'center' as const, marginTop: 14 },
   disabled: { backgroundColor: colors.line },
   outlineButton: { borderWidth: 1, borderColor: colors.green, borderRadius: 12, padding: 13, alignItems: 'center' as const, marginTop: 4, marginBottom: 20 },

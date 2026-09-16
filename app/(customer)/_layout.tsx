@@ -58,8 +58,8 @@ function CustomerHeader() {
         <Text style={styles.brand}>Seedlings</Text>
       </View>
       <View style={styles.delivery}>
-        <Text style={styles.deliveryCaption}>Deliver to</Text>
-        <Text style={styles.deliveryValue} numberOfLines={1}>{addressLabel}⌄</Text>
+        <Text style={styles.deliveryCaption}>DELIVER TO</Text>
+        <View style={styles.deliveryRow}><Text style={styles.pin}>⌖</Text><Text style={styles.deliveryValue} numberOfLines={1}>{addressLabel}</Text><Text style={styles.chevron}>⌄</Text></View>
       </View>
     </View>
   );
@@ -93,8 +93,11 @@ const styles = {
   left: { flexDirection: 'row' as const, alignItems: 'center' as const, flex: 1 },
   backButton: { width: 32, height: 40, alignItems: 'flex-start' as const, justifyContent: 'center' as const, marginRight: 2 },
   backText: { fontSize: 36, lineHeight: 40, color: colors.ink },
-  brand: { fontSize: 21, fontWeight: '900' as const, color: colors.greenDark },
+  brand: { fontFamily: 'System', fontSize: 21, fontWeight: '900' as const, color: colors.greenDark, letterSpacing: -0.3 },
   delivery: { alignItems: 'flex-end' as const, maxWidth: '52%' as const },
-  deliveryCaption: { fontSize: 10, color: colors.inkSoft },
-  deliveryValue: { fontSize: 12, fontWeight: '800' as const, color: colors.ink, marginTop: 2 },
+  deliveryCaption: { fontFamily: 'System', fontSize: 9, color: colors.inkSoft, fontWeight: '800' as const, letterSpacing: 0.7 },
+  deliveryRow: { flexDirection: 'row' as const, alignItems: 'center' as const, marginTop: 2, maxWidth: '100%' as const },
+  pin: { fontFamily: 'System', color: colors.greenDark, fontSize: 13, marginRight: 3 },
+  deliveryValue: { fontFamily: 'System', fontSize: 11, fontWeight: '900' as const, color: colors.ink, flexShrink: 1 },
+  chevron: { fontFamily: 'System', color: colors.inkSoft, fontSize: 13, marginLeft: 2 },
 };

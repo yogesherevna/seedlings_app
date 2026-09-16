@@ -4,13 +4,13 @@ import { db } from '../core/firebaseClient';
 import { normalizeIndianMobile } from '../clientOnboarding';
 import { app } from '../core/firebaseClient';
 
-export type SubscriptionPlan = { id:string; name:string; frequency:string; price:number; deliveriesPerTerm?:number; active:boolean; sortOrder:number };
+export type SubscriptionPlan = { id:string; name:string; frequency:string; price:number; deliveriesPerTerm?:number; active:boolean; sortOrder:number; deliveryChargeMode?:string; deliveryCharge?:number };
 export type CustomerSubscription = { id:string; subscriptionNumber?:string; customerId:string; productId?:string; productName?:string; sellingOptionLabel?:string; quantity?:number; frequency?:string; status?:string; totalDeliveries?:number; deliveriesGenerated?:number; remainingDeliveries?:number; nextDeliveryDate?:string; deliveryAddress?:Record<string,unknown>; startDate?:string; endDate?:string; price?:number; planId?:string; createdAt?:unknown };
 function num(v:unknown,f=0){const n=Number(v);return Number.isFinite(n)?n:f}
 function str(v:unknown,f=''){return typeof v==='string'?v:f}
 export async function getActiveSubscriptionPlans():Promise<SubscriptionPlan[]>{
  const s=await getDocs(query(collection(db,'subscriptionPlans'),where('active','==',true)));
- return s.docs.map(d=>{const x=d.data();return {id:d.id,name:str(x.name,str(x.frequency,'Subscription plan')),frequency:str(x.frequency),price:num(x.price),...(x.deliveriesPerTerm!=null?{deliveriesPerTerm:num(x.deliveriesPerTerm)}:{}),active:x.active===true,sortOrder:num(x.sortOrder)}}).filter(p=>['monthly','quarterly'].includes(p.frequency)).sort((a,b)=>a.sortOrder-b.sortOrder||a.price-b.price)
+ return s.docs.map(d=>{const x=d.data();return {id:d.id,name:str(x.name,str(x.frequency,'Subscription plan')),frequency:str(x.frequency),price:num(x.price),...(x.deliveriesPerTerm!=null?{deliveriesPerTerm:num(x.deliveriesPerTerm)}:{}),active:x.active===true,sortOrder:num(x.sortOrder),...(x.deliveryChargeMode?{deliveryChargeMode:str(x.deliveryChargeMode)}:{}),...(x.deliveryCharge!=null?{deliveryCharge:num(x.deliveryCharge)}:{})}}).filter(p=>['monthly','quarterly'].includes(p.frequency)).sort((a,b)=>a.sortOrder-b.sortOrder||a.price-b.price)
 }
 export async function getCustomerSubscriptions(input:string):Promise<CustomerSubscription[]>{
  const mobile=normalizeIndianMobile(input);if(!mobile)throw new Error('Invalid customer mobile number.');

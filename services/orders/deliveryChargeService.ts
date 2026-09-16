@@ -1,31 +1,202 @@
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../core/firebaseClient';
 
-export type DeliveryCharge = {
-  id: string;
-  name: string;
-  mode: 'free' | 'fixed' | string;
-  amount: number;
+const clean = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+const nonNegative = (value: unknown) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
 };
 
-/** Same master used by the Website order flow. */
-export async function getActiveOneTimeDeliveryCharge(): Promise<DeliveryCharge | null> {
-  const snapshot = await getDocs(collection(db, 'deliveryCharges'));
-  const active = snapshot.docs
-    .map((doc) => {
-      const data = doc.data() || {};
-      return {
-        id: doc.id,
-        name: typeof data.name === 'string' ? data.name.trim() : '',
-        mode: typeof data.mode === 'string' ? data.mode : 'fixed',
-        amount: Number.isFinite(Number(data.amount)) ? Math.max(0, Number(data.amount)) : 0,
-        active: data.active === true,
-        scope: typeof data.scope === 'string' ? data.scope : '',
-      };
-    })
-    .filter((charge) => charge.active && charge.scope === 'one_time_order');
+export type DeliveryChargeResult = {
+  finalCharge: number;
+  baseCharge: number;
+  savings: number;
+  isFree: boolean;
+  source: 'geolocation' | 'delivery_master' | 'subscription_plan' | 'none';
+  sourceId: string;
+  sourceName: string;
+  snapshot: Record<string, unknown>;
+};
 
-  if (active.length > 1) throw new Error('Multiple active one-time delivery charges are configured. Please configure one active charge before accepting website orders.');
-  if (!active[0]) return null;
-  return { id: active[0].id, name: active[0].name, mode: active[0].mode, amount: active[0].mode === 'free' ? 0 : active[0].amount };
+export type CheckoutDeliveryCharges = {
+  oneTime: DeliveryChargeResult;
+  subscriptions: Array<DeliveryChargeResult & { planId: string; planName: string }>;
+  oneTimeTotal: number;
+  subscriptionTotal: number;
+  total: number;
+  savingsTotal: number;
+};
+
+export type DeliveryChargeSubscriptionInput = {
+  planId: string;
+  planName?: string;
+};
+
+/**
+ * Website-parity delivery calculation.
+ *
+ * Precedence:
+ * 1. Active Geolocation Master matching the delivery pincode.
+ * 2. Active Delivery Charges Master fallback for the required scope.
+ * 3. For subscriptions, the selected plan can reduce the subscription base
+ *    charge, but never increase it.
+ */
+export async function calculateCheckoutDeliveryCharges(input: {
+  pincode: string;
+  oneTime: boolean;
+  subscriptions: DeliveryChargeSubscriptionInput[];
+}): Promise<CheckoutDeliveryCharges> {
+  const pincode = clean(input.pincode).replace(/\D/g, '').slice(0, 6);
+  if (!/^\d{6}$/.test(pincode)) throw new Error('A valid 6-digit pincode is required to calculate delivery charges.');
+
+  const [geoSnap, masterSnap, planSnap] = await Promise.all([
+    getDocs(collection(db, 'geolocations')),
+    getDocs(collection(db, 'deliveryCharges')),
+    getDocs(collection(db, 'subscriptionPlans')),
+  ]);
+
+  const geolocations = geoSnap.docs.filter((d) => {
+    const x = d.data() || {};
+    return x.active === true && clean(x.pincode).replace(/\D/g, '') === pincode;
+  });
+  if (geolocations.length > 1) throw new Error(`Multiple active geolocations are configured for pincode ${pincode}.`);
+  const geoDoc = geolocations[0];
+  const geo = geoDoc?.data() || null;
+
+  const masters = masterSnap.docs.filter((d) => (d.data() || {}).active === true);
+  const masterFor = (scope: 'one_time_order' | 'subscription') => {
+    const matches = masters.filter((d) => String(d.data()?.scope || '') === scope);
+    if (matches.length > 1) throw new Error(`Multiple active ${scope === 'one_time_order' ? 'one-time' : 'subscription'} delivery charges are configured.`);
+    return matches[0];
+  };
+
+  const noneResult = (): DeliveryChargeResult => ({
+    finalCharge: 0, baseCharge: 0, savings: 0, isFree: true,
+    source: 'none', sourceId: '', sourceName: '', snapshot: {},
+  });
+
+  const baseResult = (kind: 'one_time_order' | 'subscription'): DeliveryChargeResult => {
+    const geoField = kind === 'one_time_order' ? 'oneTimeCharge' : 'subscriptionCharge';
+    if (geoDoc && geo) {
+      const charge = nonNegative(geo[geoField]);
+      return {
+        finalCharge: charge,
+        baseCharge: charge,
+        savings: 0,
+        isFree: charge === 0,
+        source: 'geolocation',
+        sourceId: geoDoc.id,
+        sourceName: clean(geo.locationName) || `Pincode ${pincode}`,
+        snapshot: {
+          id: geoDoc.id,
+          locationName: clean(geo.locationName),
+          pincode,
+          oneTimeCharge: nonNegative(geo.oneTimeCharge),
+          subscriptionCharge: nonNegative(geo.subscriptionCharge),
+          active: true,
+        },
+      };
+    }
+
+    const masterDoc = masterFor(kind);
+    const master = masterDoc?.data() || null;
+    if (masterDoc && master) {
+      const charge = clean(master.mode).toLowerCase() === 'free' ? 0 : nonNegative(master.amount);
+      return {
+        finalCharge: charge,
+        baseCharge: charge,
+        savings: 0,
+        isFree: charge === 0,
+        source: 'delivery_master',
+        sourceId: masterDoc.id,
+        sourceName: clean(master.name) || 'Delivery Charges Master',
+        snapshot: {
+          id: masterDoc.id,
+          name: clean(master.name),
+          scope: clean(master.scope),
+          mode: clean(master.mode),
+          amount: charge,
+          active: true,
+        },
+      };
+    }
+
+    return noneResult();
+  };
+
+  const oneTime = input.oneTime ? baseResult('one_time_order') : noneResult();
+  const subscriptions = input.subscriptions.map((entry) => {
+    const base = baseResult('subscription');
+    const planDoc = planSnap.docs.find((d) => d.id === entry.planId);
+    if (!planDoc) throw new Error(`Subscription plan "${entry.planName || entry.planId}" was not found.`);
+    const plan = planDoc.data() || {};
+    if (plan.active !== true) throw new Error(`Subscription plan "${entry.planName || plan.name || entry.planId}" is no longer active.`);
+
+    const mode = clean(plan.deliveryChargeMode).toLowerCase();
+    let final = base.finalCharge;
+    let source = base.source;
+    let sourceId = base.sourceId;
+    let sourceName = base.sourceName;
+
+    if (mode === 'free' || mode === 'included') {
+      final = 0;
+      source = 'subscription_plan';
+      sourceId = planDoc.id;
+      sourceName = clean(plan.name) || entry.planName || 'Subscription plan';
+    } else if (mode === 'per_delivery' && Number.isFinite(Number(plan.deliveryCharge)) && Number(plan.deliveryCharge) >= 0) {
+      final = Math.min(base.finalCharge, nonNegative(plan.deliveryCharge));
+      if (final !== base.finalCharge) {
+        source = 'subscription_plan';
+        sourceId = planDoc.id;
+        sourceName = clean(plan.name) || entry.planName || 'Subscription plan';
+      }
+    }
+
+    const savings = Math.max(0, base.finalCharge - final);
+    return {
+      ...base,
+      finalCharge: final,
+      savings,
+      isFree: final === 0,
+      source,
+      sourceId,
+      sourceName,
+      planId: entry.planId,
+      planName: clean(plan.name) || entry.planName || entry.planId,
+      snapshot: {
+        ...base.snapshot,
+        planId: planDoc.id,
+        planName: clean(plan.name) || entry.planName || planDoc.id,
+        deliveryChargeMode: mode,
+        planDeliveryCharge: nonNegative(plan.deliveryCharge),
+        baseCharge: base.finalCharge,
+        finalCharge: final,
+        savings,
+      },
+    };
+  });
+
+  const subscriptionTotal = subscriptions.reduce((sum, item) => sum + item.finalCharge, 0);
+  return {
+    oneTime,
+    subscriptions,
+    oneTimeTotal: oneTime.finalCharge,
+    subscriptionTotal,
+    total: oneTime.finalCharge + subscriptionTotal,
+    savingsTotal: subscriptions.reduce((sum, item) => sum + item.savings, 0),
+  };
+}
+
+/** Compatibility helper for one-time order creation. */
+export async function getActiveOneTimeDeliveryCharge(pincode?: string) {
+  if (!pincode) return null;
+  const result = await calculateCheckoutDeliveryCharges({ pincode, oneTime: true, subscriptions: [] });
+  if (result.oneTime.source === 'none') return null;
+  return {
+    id: result.oneTime.sourceId,
+    name: result.oneTime.sourceName,
+    mode: result.oneTime.finalCharge === 0 ? 'free' : 'fixed',
+    amount: result.oneTime.finalCharge,
+    details: result.oneTime.snapshot,
+  };
 }
