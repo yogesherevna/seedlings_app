@@ -10,6 +10,10 @@ export default function Login() {
   const setStoreMobile = useAppStore((s) => s.setMobile);
 
   const submit = async () => {
+    if (!__DEV__) {
+      Alert.alert('OTP verification unavailable', 'Customer OTP verification is not configured for this production build yet.');
+      return;
+    }
     if (!/^\d{10}$/.test(mobile)) {
       Alert.alert('Invalid mobile number', 'Please enter a valid 10-digit mobile number.');
       return;

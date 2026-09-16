@@ -10,7 +10,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     void hydrateSession();
-  }, [hydrateCart, hydrateSession]);
+  }, [hydrateSession]);
 
   return (
     <>

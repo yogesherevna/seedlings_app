@@ -6,7 +6,7 @@ import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
 import { ensureClientOnboarding } from '../../../services/clientOnboarding';
 
-const STATIC_OTP = '1234';
+const DEV_OTP = '1234';
 const OTP_VALIDITY_SECONDS = 60;
 const OTP_LENGTH = 4;
 
@@ -68,11 +68,15 @@ export default function OTP() {
   };
 
   const verify = async () => {
+    if (!__DEV__) {
+      Alert.alert('OTP verification unavailable', 'Customer OTP verification is not configured for this production build yet.');
+      return;
+    }
     if (remainingSeconds <= 0) {
       Alert.alert('OTP expired', 'Please request a new OTP and try again.');
       return;
     }
-    if (otp !== STATIC_OTP) {
+    if (otp !== DEV_OTP) {
       Alert.alert('Invalid OTP', 'Please enter the correct 4-digit OTP.');
       return;
     }
@@ -116,7 +120,7 @@ export default function OTP() {
       ))}
     </View>
     <Text style={{color:remainingSeconds>0?colors.inkSoft:colors.danger,marginBottom:8}}>{remainingSeconds>0?`OTP expires in ${formattedTimer}`:'OTP expired'}</Text>
-    <Text style={{color:colors.inkSoft,marginBottom:22}}>Demo OTP: <Text style={{fontWeight:'900',color:colors.greenDark}}>1234</Text></Text>
+    {__DEV__ ? <Text style={{color:colors.inkSoft,marginBottom:22}}>Development OTP: <Text style={{fontWeight:'900',color:colors.greenDark}}>1234</Text></Text> : <Text style={{color:colors.danger,marginBottom:22,textAlign:'center'}}>OTP verification is not configured for this production build.</Text>}
     <View style={{width:'100%'}}><Button title={verifying?'Verifying…':'Verify'} onPress={verify}/></View>
     <Pressable onPress={resend} disabled={remainingSeconds>0||verifying} style={{padding:14}}><Text style={{color:remainingSeconds>0?colors.inkFaint:colors.greenDark,fontWeight:'800'}}>Resend OTP</Text></Pressable>
   </View></Screen>;
