@@ -4,14 +4,14 @@ import { router, useFocusEffect } from 'expo-router';
 import { Button, Screen } from '../../../components/UI';
 import { colors } from '../../../constants/theme';
 import { useAppStore } from '../../../store/appStore';
-import { getCartTotals } from '../../../services/cart/cartService';
+import { getUnifiedCartTotals } from '../../../services/cart/cartService';
 import { getCustomerAddresses, type CustomerAddress } from '../../../services/customerAddresses';
-import { createCustomerOneTimeOrder } from '../../../services/orders/orderService';
+import { createCustomerMixedCheckout } from '../../../services/orders/mixedCheckoutService';
 import { checkProductAvailability, nextWeekSaturday } from '../../../services/orders/customerOrderAvailability';
 import { confirmHarvestShortage } from '../../../services/orders/customerAlerts';
 import { calculateCheckoutDeliveryCharges, type CheckoutDeliveryCharges } from '../../../services/orders/deliveryChargeService';
 import { isPaymentGatewayConfigured } from '../../../services/payments/paymentService';
-import { getProducts, type Product } from '../../../services/products/productService';
+import { getProducts } from '../../../services/products/productService';
 
 function formatAddress(address: CustomerAddress) {
   return [address.addressLine1, address.addressLine2, address.landmark, address.city, address.state, address.pincode].filter(Boolean).join(', ');
@@ -24,7 +24,7 @@ export default function Checkout() {
   const cart = useAppStore((s) => s.cart);
   const subscriptionCart = useAppStore((s) => s.subscriptionCart);
   const mobile = useAppStore((s) => s.mobile);
-  const totals = useMemo(() => getCartTotals(cart), [cart]);
+  const totals = useMemo(() => getUnifiedCartTotals({ oneTimeItems: cart, subscriptionItems: subscriptionCart }), [cart, subscriptionCart]);
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [selectedSlot, setSelectedSlot] = useState<DeliverySlot | ''>('');
@@ -74,29 +74,36 @@ export default function Checkout() {
 
   const selectedAddress = addresses.find((item) => item.id === selectedAddressId);
   const checkoutTotal = totals.subtotal + (deliveryCharges?.total ?? 0);
+  const oneTimeSubtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subscriptionSubtotal = subscriptionCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const validateCheckout = async () => {
     setValidationError('');
-    if (cart.length === 0) return setValidationError('Your cart is empty.');
+    if (cart.length === 0 && subscriptionCart.length === 0) return setValidationError('Your cart is empty.');
     if (!selectedAddress) return setValidationError('Please select a delivery address.');
     if (!mobile) return setValidationError('Customer session not found. Please log in again.');
     if (!selectedSlot) return setValidationError('Please select a weekend delivery slot.');
     if (chargeLoading) return setValidationError('Delivery charge is still loading. Please try again.');
     if (!deliveryCharges) return setValidationError('Delivery charge could not be calculated. Please try again later.');
-    if (subscriptionCart.length > 0) return setValidationError('Subscription items are in the cart and mixed checkout will be enabled in the unified checkout phase.');
 
     setPlacingOrder(true);
     try {
       const { products } = await getProducts({ forceRefresh: true });
       const productMap = new Map(products.map((product) => [product.id, product]));
-      const deliveryDate = nextWeekSaturday();
-      const availabilityResults = await Promise.all(cart.map(async (item) => {
+      const shortageCandidates: Array<{ result: Awaited<ReturnType<typeof checkProductAvailability>> }> = [];
+      const oneTimeDeliveryDate = nextWeekSaturday();
+      for (const item of cart) {
         const product = productMap.get(item.id);
         if (!product || !product.active || !product.oneTimePurchase) throw new Error(`Product "${item.name}" is no longer available for one-time purchase.`);
-        return { item, result: await checkProductAvailability({ product, quantity: item.quantity, deliveryDate }) };
-      }));
+        shortageCandidates.push({ result: await checkProductAvailability({ product, quantity: item.quantity, deliveryDate: oneTimeDeliveryDate }) });
+      }
+      for (const item of subscriptionCart) {
+        const product = productMap.get(item.id);
+        if (!product || !product.active) throw new Error(`Product "${item.name}" is no longer available.`);
+        shortageCandidates.push({ result: await checkProductAvailability({ product, quantity: item.quantity, deliveryDate: item.startDate || oneTimeDeliveryDate }) });
+      }
 
-      const shortages = availabilityResults.filter(({ result }) => result.hasShortage);
+      const shortages = shortageCandidates.filter(({ result }) => result.hasShortage);
       let shortageDecision: 'continue' | 'contact' | undefined;
       if (shortages.length) {
         const availableGrams = Math.min(...shortages.map(({ result }) => result.availableGrams));
@@ -105,9 +112,9 @@ export default function Checkout() {
         shortageDecision = await confirmHarvestShortage({ mode: 'one-time', availableGrams, requestedGrams, shortageGrams });
       }
 
-      const order = await createCustomerOneTimeOrder({ mobile, items: cart, address: selectedAddress, paymentMethod: 'online', deliverySlot: selectedSlot, shortageDecision });
+      const result = await createCustomerMixedCheckout({ mobile, addressId: selectedAddress.id, deliverySlot: selectedSlot, paymentMethod: 'online', oneTimeItems: cart, subscriptionItems: subscriptionCart, shortageDecision });
       useAppStore.getState().clearCart();
-      router.replace({ pathname: '/(customer)/checkout/success', params: { orderId: order.id, orderNumber: order.orderNumber, total: String(order.total), paymentMethod: 'online' } });
+      router.replace({ pathname: '/(customer)/checkout/success', params: { orderId: result.primaryOrderId, orderNumber: result.primaryOrderNumber, total: String(result.total), paymentMethod: 'online' } });
     } catch (error) {
       if (error instanceof Error && error.message === 'HARVEST_SHORTAGE_CONFIRMATION_REQUIRED') {
         setValidationError('Limited harvest is available. Please try placing the order again to review the availability decision.');
@@ -163,16 +170,19 @@ export default function Checkout() {
       <Text style={styles.heading}>Order summary</Text>
       <View style={styles.card}>
         <View style={styles.line}><Text style={styles.muted}>MRP</Text><Text style={styles.muted}>₹{totals.mrpSubtotal}</Text></View>
-        <View style={styles.line}><Text style={styles.muted}>Subtotal</Text><Text style={styles.muted}>₹{totals.subtotal}</Text></View>
+        <View style={styles.line}><Text style={styles.muted}>One-time purchases</Text><Text style={styles.muted}>₹{oneTimeSubtotal}</Text></View>
+        {subscriptionSubtotal > 0 ? <View style={styles.line}><Text style={styles.muted}>Subscriptions</Text><Text style={styles.muted}>₹{subscriptionSubtotal}</Text></View> : null}
         {totals.savings > 0 ? <View style={styles.line}><Text style={styles.saving}>You save</Text><Text style={styles.saving}>−₹{totals.savings}</Text></View> : null}
-        <View style={styles.line}><Text style={styles.muted}>Delivery</Text><Text style={styles.muted}>{chargeLoading ? 'Calculating…' : deliveryCharges?.oneTime.isFree ? '₹0 — FREE' : `₹${deliveryCharges?.oneTime.finalCharge ?? 0}`}</Text></View>
-        {deliveryCharges?.oneTime.savings > 0 ? <View style={styles.line}><Text style={styles.saving}>You saved on delivery</Text><Text style={styles.saving}>−₹{deliveryCharges.oneTime.savings}</Text></View> : null}
+        <View style={styles.line}><Text style={styles.muted}>One-time delivery</Text><Text style={styles.muted}>{chargeLoading ? 'Calculating…' : deliveryCharges?.oneTime.isFree ? '₹0 — FREE' : `₹${deliveryCharges?.oneTime.finalCharge ?? 0}`}</Text></View>
+        {deliveryCharges?.subscriptions.map((charge) => <View key={charge.planId} style={styles.line}><Text style={styles.muted}>{charge.planName} delivery</Text><Text style={styles.muted}>{charge.isFree ? '₹0 — FREE' : `₹${charge.finalCharge}`}</Text></View>)}
+        {deliveryCharges?.oneTime.savings > 0 ? <View style={styles.line}><Text style={styles.saving}>You saved on one-time delivery</Text><Text style={styles.saving}>−₹{deliveryCharges.oneTime.savings}</Text></View> : null}
         <View style={[styles.line, { borderBottomWidth: 0 }]}><Text style={styles.totalLabel}>Grand total</Text><Text style={styles.total}>₹{checkoutTotal}</Text></View>
         {deliveryCharges?.savingsTotal > 0 ? <Text style={styles.saving}>You saved ₹{deliveryCharges.savingsTotal} on delivery</Text> : null}
         <Text style={styles.muted}>Delivery uses the active pincode-specific Geolocation Master charge when available; otherwise the matching Delivery Charges Master fallback is used.</Text>
       </View>
 
-      {deliveryCharges?.oneTime.sourceName ? <Text style={styles.muted}>Delivery charge source: {deliveryCharges.oneTime.sourceName}</Text> : null}
+      {deliveryCharges?.oneTime.sourceName ? <Text style={styles.muted}>One-time delivery source: {deliveryCharges.oneTime.sourceName}</Text> : null}
+      {deliveryCharges?.subscriptions.map((charge) => charge.sourceName ? <Text key={`source-${charge.planId}`} style={styles.muted}>{charge.planName} delivery source: {charge.sourceName}</Text> : null)}
       {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
       {validationError ? <Text style={styles.error}>{validationError}</Text> : null}
       <View style={{ marginBottom: 18 }}><Button title={placingOrder ? 'Placing Order…' : 'Place Order'} onPress={placingOrder ? () => {} : validateCheckout} /></View>
