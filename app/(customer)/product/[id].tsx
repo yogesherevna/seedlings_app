@@ -183,30 +183,40 @@ export default function ProductDetail() {
               <Text style={styles.planPrice}>{money(product.price, product.currency)}</Text>
             </View>
 
-            <Text style={styles.stepTitle}>1 · Select plan</Text>
-            {plans.map((plan) => (
-              <Pressable key={plan.id} onPress={() => setPlanId(plan.id)} style={[styles.plan, planId === plan.id && styles.planSelected]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.bold}>{plan.name}</Text>
-                  <Text style={styles.muted}>{money(Number(plan.price ?? 0), product.currency)} / term</Text>
-                  <Text style={styles.planMeta}>{Number(plan.deliveriesPerTerm ?? 0) > 0 ? `${Number(plan.deliveriesPerTerm)} deliveries / term` : 'Ongoing deliveries'} · {plan.deliveryChargeMode === 'per_delivery' && Number(plan.deliveryCharge ?? 0) > 0 ? `+ ${money(Number(plan.deliveryCharge), product.currency)} / delivery` : 'Delivery included'}</Text>
-                </View>
-                {planId === plan.id ? <Text style={styles.selected}>Selected</Text> : null}
-              </Pressable>
-            ))}
+            <ScrollView
+              style={styles.sheetScroll}
+              contentContainerStyle={styles.sheetScrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.stepTitle}>1 · Select plan</Text>
+              {plans.map((plan) => (
+                <Pressable key={plan.id} onPress={() => setPlanId(plan.id)} style={[styles.plan, planId === plan.id && styles.planSelected]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.bold}>{plan.name}</Text>
+                    <Text style={styles.muted}>{money(Number(plan.price ?? 0), product.currency)} / term</Text>
+                    <Text style={styles.planMeta}>{Number(plan.deliveriesPerTerm ?? 0) > 0 ? `${Number(plan.deliveriesPerTerm)} deliveries / term` : 'Ongoing deliveries'} · {plan.deliveryChargeMode === 'per_delivery' && Number(plan.deliveryCharge ?? 0) > 0 ? `+ ${money(Number(plan.deliveryCharge), product.currency)} / delivery` : 'Delivery included'}</Text>
+                  </View>
+                  {planId === plan.id ? <Text style={styles.selected}>Selected</Text> : null}
+                </Pressable>
+              ))}
 
-            <Text style={styles.stepTitle}>2 · Quantity</Text>
-            <View style={styles.quantityControl}>
-              <Pressable onPress={() => setSubscriptionQuantity((value) => Math.max(1, value - 1))} style={styles.quantityButton}><Text style={styles.quantityText}>−</Text></Pressable>
-              <Text style={styles.quantityValue}>{subscriptionQuantity}</Text>
-              <Pressable onPress={() => setSubscriptionQuantity((value) => value + 1)} style={styles.quantityButton}><Text style={styles.quantityText}>+</Text></Pressable>
+              <Text style={styles.stepTitle}>2 · Quantity</Text>
+              <View style={styles.quantityControl}>
+                <Pressable onPress={() => setSubscriptionQuantity((value) => Math.max(1, value - 1))} style={styles.quantityButton}><Text style={styles.quantityText}>−</Text></Pressable>
+                <Text style={styles.quantityValue}>{subscriptionQuantity}</Text>
+                <Pressable onPress={() => setSubscriptionQuantity((value) => value + 1)} style={styles.quantityButton}><Text style={styles.quantityText}>+</Text></Pressable>
+              </View>
+
+              <Text style={styles.stepTitle}>3 · Start date</Text>
+              <View style={styles.dateBox}><TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" style={styles.dateInput} /><Text style={styles.muted}>Saturday delivery</Text></View>
+
+              <View style={styles.benefit}><Text style={styles.bold}>Delivery included</Text><Text style={styles.muted}>Delivery address will be selected on the subscription screen.</Text></View>
+            </ScrollView>
+
+            <View style={styles.sheetFooter}>
+              <Button title={planId ? 'Subscribe' : 'Select a subscription'} onPress={subscribe} disabled={!planId} />
             </View>
-
-            <Text style={styles.stepTitle}>3 · Start date</Text>
-            <View style={styles.dateBox}><TextInput value={startDate} onChangeText={setStartDate} placeholder="YYYY-MM-DD" autoCapitalize="none" style={styles.dateInput} /><Text style={styles.muted}>Saturday delivery</Text></View>
-
-            <View style={styles.benefit}><Text style={styles.bold}>Delivery included</Text><Text style={styles.muted}>Delivery address will be selected on the subscription screen.</Text></View>
-            <Button title={planId ? 'Subscribe' : 'Select a subscription'} onPress={subscribe} disabled={!planId} />
           </View>
         </View>
       </Modal>
@@ -244,6 +254,9 @@ const styles = {
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.42)', justifyContent: 'flex-end' as const },
   modalDismiss: { flex: 1 },
   sheet: { backgroundColor: colors.paper, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: spacing.lg, maxHeight: '90%' as const },
+  sheetScroll: { flexShrink: 1, minHeight: 0 },
+  sheetScrollContent: { paddingBottom: 4 },
+  sheetFooter: { paddingTop: 10, backgroundColor: colors.paper },
   handle: { width: 42, height: 4, borderRadius: 4, backgroundColor: colors.line, alignSelf: 'center' as const, marginBottom: 12 },
   sheetHead: { flexDirection: 'row' as const, alignItems: 'flex-start' as const },
   eyebrow: { color: colors.orangeDark, fontSize: 11, fontWeight: '900' as const, textTransform: 'uppercase' as const },
