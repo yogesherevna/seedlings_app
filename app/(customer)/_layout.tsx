@@ -1,12 +1,14 @@
-import { Stack, usePathname, router } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
+import { useBackNavigation } from '../backNavigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/theme';
 import { getCustomerAddresses } from '../../services/customerAddresses';
 import { useAppStore } from '../../store/appStore';
 
 function CustomerHeader() {
+  const { handleBack } = useBackNavigation();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const mobile = useAppStore((state) => state.mobile);
@@ -51,7 +53,7 @@ function CustomerHeader() {
     <View style={[styles.header, { paddingTop: insets.top, height: 62 + insets.top }]}>
       <View style={styles.left}>
         {!isRootTab ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={styles.backButton}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={handleBack} style={styles.backButton}>
             <Text style={styles.backText}>‹</Text>
           </Pressable>
         ) : null}
