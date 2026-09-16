@@ -79,7 +79,7 @@ export default function OTP() {
     try {
       setVerifying(true);
       await ensureClientOnboarding(mobile);
-      login(mobile);
+      await login(mobile);
       router.replace('/(customer)/(tabs)');
     } catch (error) {
       console.error('Customer verification failed:', error);
@@ -111,7 +111,7 @@ export default function OTP() {
           maxLength={OTP_LENGTH}
           editable={!verifying && remainingSeconds > 0}
           selectTextOnFocus
-          style={{width:55,height:55,backgroundColor:'#fff',borderWidth:1,borderColor:otp.length===OTP_LENGTH?colors.green:colors.line,borderRadius:10,textAlign:'center',fontSize:22,fontWeight:'800',color:colors.ink}}
+          style={{width:55,height:55,backgroundColor:colors.panel,borderWidth:1,borderColor:otp.length===OTP_LENGTH?colors.green:colors.line,borderRadius:10,textAlign:'center',fontSize:22,fontWeight:'800',color:colors.ink}}
         />
       ))}
     </View>

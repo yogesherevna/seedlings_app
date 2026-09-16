@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'seedlings-mobile.db';
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 5;
 const WEB_STORAGE_KEY = 'seedlings-mobile-web-storage-v1';
 
 type AppMetaRow = { key: string; value: string };
@@ -77,6 +77,7 @@ class WebDatabase {
       return [...store.cart_items]
         .sort((a, b) => a.updated_at - b.updated_at)
         .map((row) => ({
+          cart_key: row.cart_key,
           product_id: row.product_id,
           selected_weight: row.selected_weight,
           quantity: row.quantity,

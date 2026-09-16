@@ -1,28 +1,212 @@
 import type { Product } from '../products/productService';
-import type { PurchaseMode } from './cartService';
+import type { CartItem, SubscriptionCartItem, UnifiedCart } from './cartService';
 import { getDatabase } from '../../storage/sqlite';
 
-export type PersistedCartItem = Product & { quantity: number; selectedWeight: string; purchaseMode: PurchaseMode; subscriptionPlanId?: string };
-function cartKey(productId: string) { return productId; }
-export function loadCart(): PersistedCartItem[] {
-  const rows = getDatabase().getAllSync<{ product_id:string; selected_weight:string; quantity:number; product_json:string }>('SELECT product_id, selected_weight, quantity, product_json FROM cart_items ORDER BY updated_at ASC');
-  const byProduct = new Map<string, PersistedCartItem>();
+export type CartScope =
+  | { kind: 'guest' }
+  | { kind: 'customer'; mobile: string };
+
+export type PersistedCartItem = Product & {
+  quantity: number;
+  selectedWeight: string;
+  purchaseMode?: 'one-time' | 'subscription';
+  subscriptionPlanId?: string;
+  planId?: string;
+  planName?: string;
+  frequency?: string;
+  deliveriesPerTerm?: number;
+  startDate?: string;
+};
+
+function normalizeMobile(mobile: string): string {
+  return String(mobile || '').replace(/\D/g, '');
+}
+
+function scopePrefix(scope: CartScope): string {
+  if (scope.kind === 'guest') return 'guest:';
+  const mobile = normalizeMobile(scope.mobile);
+  if (!mobile) throw new Error('Customer cart scope requires a valid mobile number.');
+  return `customer:${mobile}:`;
+}
+
+function oneTimeCartKey(scope: CartScope, productId: string) {
+  return `${scopePrefix(scope)}one-time:${productId}`;
+}
+
+function subscriptionCartKey(scope: CartScope, productId: string, planId: string, startDate: string) {
+  return `${scopePrefix(scope)}subscription:${productId}:${planId}:${startDate}`;
+}
+
+function isScopedKey(cartKey: string): boolean {
+  return cartKey.startsWith('guest:') || cartKey.startsWith('customer:');
+}
+
+function isLegacyKey(cartKey: string): boolean {
+  return !isScopedKey(cartKey);
+}
+
+function loadRows(): Array<{ cart_key: string; product_id: string; selected_weight: string; quantity: number; product_json: string }> {
+  return getDatabase().getAllSync<{ cart_key: string; product_id: string; selected_weight: string; quantity: number; product_json: string }>(
+    'SELECT cart_key, product_id, selected_weight, quantity, product_json FROM cart_items ORDER BY updated_at ASC',
+  );
+}
+
+function parseRows(rows: Array<{ cart_key: string; product_id: string; selected_weight: string; quantity: number; product_json: string }>): UnifiedCart {
+  const oneTimeItems: CartItem[] = [];
+  const subscriptionItems: SubscriptionCartItem[] = [];
+
   for (const row of rows) {
-    const parsed = JSON.parse(row.product_json) as Product & { purchaseMode?: PurchaseMode; subscriptionPlanId?: string };
-    const item: PersistedCartItem = { ...parsed, quantity: Math.max(1, Math.floor(row.quantity)), selectedWeight: parsed.defaultWeight || row.selected_weight || 'Pack', purchaseMode: parsed.purchaseMode === 'subscription' ? 'subscription' : 'one-time', ...(parsed.subscriptionPlanId ? { subscriptionPlanId: parsed.subscriptionPlanId } : {}) };
-    const existing = byProduct.get(row.product_id);
-    if (existing) existing.quantity += item.quantity;
-    else byProduct.set(row.product_id, item);
+    let parsed: PersistedCartItem;
+    try { parsed = JSON.parse(row.product_json) as PersistedCartItem; }
+    catch { continue; }
+
+    const quantity = Math.max(1, Math.floor(row.quantity));
+    const base = {
+      ...parsed,
+      quantity,
+      selectedWeight: parsed.defaultWeight || row.selected_weight || 'Pack',
+    };
+
+    const isSubscription = parsed.purchaseMode === 'subscription' || Boolean(parsed.planId || parsed.subscriptionPlanId);
+    if (isSubscription) {
+      // A subscription cart entry is valid only when the Website contract fields are present.
+      if (!parsed.planId || !parsed.startDate) continue;
+      subscriptionItems.push({
+        ...base,
+        planId: parsed.planId,
+        planName: parsed.planName || 'Subscription',
+        ...(parsed.frequency ? { frequency: parsed.frequency } : {}),
+        ...(Number.isFinite(Number(parsed.deliveriesPerTerm)) ? { deliveriesPerTerm: Number(parsed.deliveriesPerTerm) } : {}),
+        startDate: parsed.startDate,
+      });
+    } else {
+      oneTimeItems.push(base);
+    }
   }
-  const items = [...byProduct.values()];
-  // Phase 21 could have stored the same salable product under multiple derived-weight keys.
-  // Consolidate those legacy rows once so the Website-parity cart has one row per salable product.
-  if (rows.length !== items.length) replaceCart(items);
-  return items;
+
+  return { oneTimeItems, subscriptionItems };
 }
-export function upsertCartItem(item: PersistedCartItem) {
-  getDatabase().runSync(`INSERT INTO cart_items (cart_key, product_id, selected_weight, quantity, product_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(cart_key) DO UPDATE SET quantity = excluded.quantity, product_json = excluded.product_json, selected_weight = excluded.selected_weight, updated_at = excluded.updated_at`, cartKey(item.id), item.id, item.selectedWeight, item.quantity, JSON.stringify(item), Date.now());
+
+export function loadUnifiedCart(scope: CartScope): UnifiedCart {
+  const prefix = scopePrefix(scope);
+  const rows = loadRows().filter((row) => row.cart_key.startsWith(prefix));
+  return parseRows(rows);
 }
-export function removeCartItem(productId: string) { getDatabase().runSync(`DELETE FROM cart_items WHERE cart_key = ?`, cartKey(productId)); }
-export function replaceCart(items: PersistedCartItem[]) { const db = getDatabase(); db.withTransactionSync(() => { db.runSync(`DELETE FROM cart_items`); for (const item of items) upsertCartItem(item); }); }
-export function clearPersistedCart() { getDatabase().runSync(`DELETE FROM cart_items`); }
+
+export function loadCart(scope: CartScope): CartItem[] {
+  return loadUnifiedCart(scope).oneTimeItems;
+}
+
+export function loadLegacyUnifiedCart(): UnifiedCart {
+  return parseRows(loadRows().filter((row) => isLegacyKey(row.cart_key)));
+}
+
+export function hasScopedCart(scope: CartScope): boolean {
+  const prefix = scopePrefix(scope);
+  return loadRows().some((row) => row.cart_key.startsWith(prefix));
+}
+
+export function hasLegacyCart(): boolean {
+  return loadRows().some((row) => isLegacyKey(row.cart_key));
+}
+
+export function upsertCartItem(scope: CartScope, item: CartItem) {
+  getDatabase().runSync(
+    `INSERT INTO cart_items (cart_key, product_id, selected_weight, quantity, product_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(cart_key) DO UPDATE SET quantity = excluded.quantity, product_json = excluded.product_json, selected_weight = excluded.selected_weight, updated_at = excluded.updated_at`,
+    oneTimeCartKey(scope, item.id), item.id, item.selectedWeight, item.quantity, JSON.stringify(item), Date.now(),
+  );
+}
+
+export function upsertSubscriptionCartItem(scope: CartScope, item: SubscriptionCartItem) {
+  const persisted: PersistedCartItem = { ...item, purchaseMode: 'subscription' };
+  getDatabase().runSync(
+    `INSERT INTO cart_items (cart_key, product_id, selected_weight, quantity, product_json, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(cart_key) DO UPDATE SET quantity = excluded.quantity, product_json = excluded.product_json, selected_weight = excluded.selected_weight, updated_at = excluded.updated_at`,
+    subscriptionCartKey(scope, item.id, item.planId, item.startDate), item.id, item.selectedWeight, item.quantity, JSON.stringify(persisted), Date.now(),
+  );
+}
+
+export function removeCartItem(scope: CartScope, productId: string) {
+  getDatabase().runSync(`DELETE FROM cart_items WHERE cart_key = ?`, oneTimeCartKey(scope, productId));
+}
+
+export function removeSubscriptionCartItem(scope: CartScope, productId: string, planId: string, startDate: string) {
+  getDatabase().runSync(`DELETE FROM cart_items WHERE cart_key = ?`, subscriptionCartKey(scope, productId, planId, startDate));
+}
+
+export function replaceUnifiedCart(scope: CartScope, cart: UnifiedCart) {
+  const db = getDatabase();
+  const prefix = scopePrefix(scope);
+  const rows = loadRows().filter((row) => row.cart_key.startsWith(prefix));
+  db.withTransactionSync(() => {
+    for (const row of rows) db.runSync(`DELETE FROM cart_items WHERE cart_key = ?`, row.cart_key);
+    for (const item of cart.oneTimeItems) upsertCartItem(scope, item);
+    for (const item of cart.subscriptionItems) upsertSubscriptionCartItem(scope, item);
+  });
+}
+
+export function replaceCart(scope: CartScope, items: CartItem[]) {
+  replaceUnifiedCart(scope, { oneTimeItems: items, subscriptionItems: [] });
+}
+
+export function clearPersistedCart(scope: CartScope) {
+  const prefix = scopePrefix(scope);
+  const rows = loadRows().filter((row) => row.cart_key.startsWith(prefix));
+  const db = getDatabase();
+  db.withTransactionSync(() => {
+    for (const row of rows) db.runSync(`DELETE FROM cart_items WHERE cart_key = ?`, row.cart_key);
+  });
+}
+
+export function clearLegacyCart() {
+  const rows = loadRows().filter((row) => isLegacyKey(row.cart_key));
+  const db = getDatabase();
+  db.withTransactionSync(() => {
+    for (const row of rows) db.runSync(`DELETE FROM cart_items WHERE cart_key = ?`, row.cart_key);
+  });
+}
+
+/**
+ * Phase 31 migration for carts created before account-scoped persistence existed.
+ * The old cart has no reliable account ownership. It is migrated exactly once to
+ * the currently active scope so existing local data is not silently discarded.
+ */
+export function migrateLegacyCartToScope(scope: CartScope): UnifiedCart | null {
+  if (!hasLegacyCart()) return null;
+  const legacy = loadLegacyUnifiedCart();
+  replaceUnifiedCart(scope, legacy);
+  clearLegacyCart();
+  return legacy;
+}
+
+/**
+ * Merge guest cart into one customer cart using the same independent keys as the
+ * Website: one-time by product, subscription by product + plan + start date.
+ */
+export function mergeGuestCartIntoCustomer(mobile: string): UnifiedCart {
+  const customerScope: CartScope = { kind: 'customer', mobile };
+  const guest = loadUnifiedCart({ kind: 'guest' });
+  const customer = loadUnifiedCart(customerScope);
+
+  const oneTime = [...customer.oneTimeItems];
+  for (const guestItem of guest.oneTimeItems) {
+    const existing = oneTime.find((item) => item.id === guestItem.id);
+    if (existing) existing.quantity += guestItem.quantity;
+    else oneTime.push(guestItem);
+  }
+
+  const subscription = [...customer.subscriptionItems];
+  for (const guestItem of guest.subscriptionItems) {
+    const existing = subscription.find((item) =>
+      item.id === guestItem.id &&
+      item.planId === guestItem.planId &&
+      item.startDate === guestItem.startDate,
+    );
+    if (existing) existing.quantity += guestItem.quantity;
+    else subscription.push(guestItem);
+  }
+
+  const merged = { oneTimeItems: oneTime, subscriptionItems: subscription };
+  replaceUnifiedCart(customerScope, merged);
+  clearPersistedCart({ kind: 'guest' });
+  return merged;
+}
