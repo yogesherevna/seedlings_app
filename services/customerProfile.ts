@@ -1,6 +1,7 @@
 import { doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from './core/firebaseClient';
 import { normalizeIndianMobile } from './clientOnboarding';
+import { clearCachedCustomer, getCachedCustomer, setCachedCustomer } from './customerCache';
 
 export type CustomerProfile = {
   mobile: string;
@@ -10,6 +11,8 @@ export type CustomerProfile = {
   email: string;
   status?: string;
   onboardingStatus?: string;
+  preferredDeliveryDay?: string;
+  deliveryDay?: string;
 };
 
 function customerRef(mobile: string) {
@@ -19,11 +22,27 @@ function customerRef(mobile: string) {
 }
 
 export async function getCustomerProfile(mobile: string): Promise<CustomerProfile> {
-  const snapshot = await getDoc(customerRef(mobile));
+  const normalized = normalizeIndianMobile(mobile);
+  if (!normalized) throw new Error('Invalid customer mobile number.');
+  const cached = getCachedCustomer(normalized);
+  if (cached && typeof cached.name === 'string' && typeof cached.email === 'string') {
+    return {
+      mobile: String(cached.mobile ?? normalized),
+      countryCode: cached.countryCode,
+      phoneE164: cached.phoneE164,
+      name: cached.name,
+      email: cached.email,
+      status: cached.status,
+      onboardingStatus: cached.onboardingStatus,
+      preferredDeliveryDay: cached.preferredDeliveryDay,
+      deliveryDay: cached.deliveryDay,
+    };
+  }
+  const snapshot = await getDoc(customerRef(normalized));
   if (!snapshot.exists()) throw new Error('Customer profile not found.');
 
   const data = snapshot.data();
-  return {
+  const profile = {
     mobile: String(data.mobile ?? snapshot.id),
     countryCode: data.countryCode ? String(data.countryCode) : undefined,
     phoneE164: data.phoneE164 ? String(data.phoneE164) : undefined,
@@ -31,7 +50,12 @@ export async function getCustomerProfile(mobile: string): Promise<CustomerProfil
     email: typeof data.email === 'string' ? data.email : '',
     status: data.status ? String(data.status) : undefined,
     onboardingStatus: data.onboardingStatus ? String(data.onboardingStatus) : undefined,
+    preferredDeliveryDay: data.preferredDeliveryDay ? String(data.preferredDeliveryDay) : undefined,
+    deliveryDay: data.deliveryDay ? String(data.deliveryDay) : undefined,
   };
+  const existing = getCachedCustomer(snapshot.id);
+  setCachedCustomer(snapshot.id, { ...(existing ?? {}), ...profile });
+  return profile;
 }
 
 export async function updateCustomerProfile(
@@ -52,6 +76,8 @@ export async function updateCustomerProfile(
   await updateDoc(customerRef(normalized), {
     name,
     email,
+    preferredDeliveryDay: 'Saturday',
     updatedAt: serverTimestamp(),
   });
+  clearCachedCustomer(normalized);
 }

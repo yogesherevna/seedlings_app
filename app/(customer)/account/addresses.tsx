@@ -8,6 +8,7 @@ import {
   addCustomerAddress,
   editCustomerAddress,
   getCustomerAddresses,
+  deleteCustomerAddress,
   setDefaultCustomerAddress,
   type CustomerAddress,
 } from '../../../services/customerAddresses';
@@ -62,6 +63,31 @@ export default function CustomerAddressesScreen() {
     } finally { setSaving(false); }
   };
 
+  const removeAddress = (address: CustomerAddress) => {
+    Alert.alert(
+      'Delete address',
+      `Delete ${address.label || 'this address'}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const next = await deleteCustomerAddress(mobile, address.id);
+              setAddresses(next);
+              if (editing?.id === address.id) { setEditing(null); setFormOpen(false); }
+              Alert.alert('Address deleted', 'Your address has been deleted.');
+            } catch (error) {
+              Alert.alert('Unable to delete address', error instanceof Error ? error.message : 'Please try again.');
+            }
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  };
+
   const makeDefault = async (id: string) => {
     try {
       const next = await setDefaultCustomerAddress(mobile, id);
@@ -106,6 +132,7 @@ export default function CustomerAddressesScreen() {
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
             <Pressable onPress={() => openEdit(address)} style={{ borderWidth: 1, borderColor: colors.line, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 9 }}><Text style={{ color: colors.greenDark, fontWeight: '800' }}>Edit</Text></Pressable>
             {index !== 0 && <Pressable onPress={() => makeDefault(address.id)} style={{ borderWidth: 1, borderColor: colors.line, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 9 }}><Text style={{ color: colors.inkSoft, fontWeight: '800' }}>Set default</Text></Pressable>}
+            <Pressable onPress={() => removeAddress(address)} style={{ borderWidth: 1, borderColor: colors.line, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 9 }}><Text style={{ color: colors.danger, fontWeight: '800' }}>Delete</Text></Pressable>
           </View>
         </View>
       ))}

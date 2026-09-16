@@ -10,7 +10,7 @@ export default function CustomerProfileScreen() {
   const mobile = useAppStore((state) => state.mobile);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [preferredDeliveryDay, setPreferredDeliveryDay] = useState('Saturday');
+  const PREFERRED_DELIVERY_DAY = 'Saturday';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -26,7 +26,6 @@ export default function CustomerProfileScreen() {
         if (!active) return;
         setName(profile.name);
         setEmail(profile.email);
-        setPreferredDeliveryDay(profile.preferredDeliveryDay || 'Saturday');
       } catch (error) {
         console.error('Customer profile load failed:', error);
         if (active) Alert.alert('Unable to load profile', 'Please check your internet connection and try again.');
@@ -71,7 +70,7 @@ export default function CustomerProfileScreen() {
           <TextInput value={email} onChangeText={setEmail} placeholder="Enter your email (optional)" placeholderTextColor={colors.inkFaint} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} style={{ backgroundColor: colors.panel, borderWidth: 1, borderColor: colors.line, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.ink, fontSize: 16 }} />
 
           <Text style={{ color: colors.inkSoft, fontSize: 12, fontWeight: '700', marginTop: 18, marginBottom: 7 }}>PREFERRED DELIVERY DAY</Text>
-          <TextInput value={preferredDeliveryDay} editable={false} style={{ backgroundColor: colors.block, borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.inkSoft, fontSize: 16 }} />
+          <TextInput value={PREFERRED_DELIVERY_DAY} editable={false} style={{ backgroundColor: colors.block, borderWidth: 1, borderColor: colors.lineSoft, borderRadius: 10, height: 50, paddingHorizontal: 14, color: colors.inkSoft, fontSize: 16 }} />
 
           <View style={{ marginTop: 22 }}>
             <Button title={saving ? 'Saving…' : 'Save Changes'} onPress={save} />

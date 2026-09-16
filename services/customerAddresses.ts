@@ -2,6 +2,7 @@ import { doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from './core/firebaseClient';
 import { normalizeIndianMobile } from './clientOnboarding';
 import { stripUndefined } from './core/firestoreData';
+import { getCachedCustomer, setCachedCustomer } from './customerCache';
 
 export type CustomerAddress = {
   id: string;
@@ -38,13 +39,26 @@ function normalizeAddress(address: Record<string, unknown>, index: number): Cust
 }
 
 export async function getCustomerAddresses(mobile: string): Promise<CustomerAddress[]> {
-  const snapshot = await getDoc(customerRef(mobile));
+  const normalized = normalizeIndianMobile(mobile);
+  if (!normalized) throw new Error('Invalid customer mobile number.');
+
+  const cached = getCachedCustomer(normalized);
+  if (cached && Array.isArray(cached.addresses)) {
+    return cached.addresses.map((address, index) =>
+      normalizeAddress((address ?? {}) as Record<string, unknown>, index),
+    );
+  }
+
+  const snapshot = await getDoc(customerRef(normalized));
   if (!snapshot.exists()) throw new Error('Customer account not found.');
 
   const data = snapshot.data();
-  return (Array.isArray(data.addresses) ? data.addresses : []).map((address, index) =>
+  const addresses = (Array.isArray(data.addresses) ? data.addresses : []).map((address, index) =>
     normalizeAddress((address ?? {}) as Record<string, unknown>, index),
   );
+  const existing = getCachedCustomer(normalized);
+  setCachedCustomer(normalized, { ...(existing ?? {}), mobile: normalized, addresses });
+  return addresses;
 }
 
 function validateAddress(address: CustomerAddress, customerMobile: string) {
@@ -78,6 +92,8 @@ export async function updateCustomerAddresses(mobile: string, addresses: Custome
     addresses: stripUndefined(cleaned),
     updatedAt: serverTimestamp(),
   });
+  const existing = getCachedCustomer(normalized);
+  setCachedCustomer(normalized, { ...(existing ?? {}), mobile: normalized, addresses: cleaned });
 }
 
 export async function addCustomerAddress(mobile: string, address: Omit<CustomerAddress, 'id'>): Promise<CustomerAddress[]> {
@@ -100,6 +116,15 @@ export async function setDefaultCustomerAddress(mobile: string, addressId: strin
   const index = current.findIndex((item) => item.id === addressId);
   if (index < 0) throw new Error('Address not found.');
   const next = [current[index], ...current.filter((_, itemIndex) => itemIndex !== index)];
+  await updateCustomerAddresses(mobile, next);
+  return next;
+}
+
+export async function deleteCustomerAddress(mobile: string, addressId: string): Promise<CustomerAddress[]> {
+  const current = await getCustomerAddresses(mobile);
+  const target = current.find((item) => item.id === addressId);
+  if (!target) throw new Error('Address not found.');
+  const next = current.filter((item) => item.id !== addressId);
   await updateCustomerAddresses(mobile, next);
   return next;
 }
