@@ -85,7 +85,7 @@ export async function createCustomerMixedCheckout(input: MixedCheckoutInput): Pr
   const productById = new Map(allIds.map((id, index) => [id, productSnapshots[index]]));
 
   const plansSnapshot = await getDocs(query(collection(db, 'subscriptionPlans'), where('active', '==', true)));
-  const planById = new Map(plansSnapshot.docs.map((item) => [item.id, item.data()]));
+  const planById = new Map<string, Record<string, unknown>>(plansSnapshot.docs.map((item) => [item.id, item.data() as Record<string, unknown>]));
 
   const deliveryCharges = await calculateCheckoutDeliveryCharges({
     pincode: String(address.pincode ?? ''),
@@ -153,7 +153,7 @@ export async function createCustomerMixedCheckout(input: MixedCheckoutInput): Pr
 
     const charge = deliveryByPlan.get(item.planId);
     const deliveryFee = charge?.finalCharge ?? 0;
-    const production = productionSnap.data() || {};
+    const production = (productionSnap.data() || {}) as Record<string, unknown>;
     const label = weight >= 1000 && weight % 1000 === 0 ? `${weight / 1000}kg box` : `${weight}g box`;
     const subscriptionRef = doc(collection(db, 'subscriptions'));
     const orderRef = doc(collection(db, 'orders'));
