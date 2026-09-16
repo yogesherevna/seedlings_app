@@ -88,7 +88,7 @@ export default function ProductDetail() {
   const description = richTextToNativeText(product.description) || 'Freshly grown microgreens, harvested with care and prepared for delivery.';
 
   const add = () => {
-    if (!canBuyOneTime || !product.inStock) return;
+    if (!canBuyOneTime) return;
     addToCart(product, product.defaultWeight);
     for (let i = 1; i < quantity; i += 1) addToCart(product, product.defaultWeight);
     router.push('/(customer)/(tabs)/cart');
@@ -129,12 +129,12 @@ export default function ProductDetail() {
 
           {canBuyOneTime ? <View style={styles.oneTimeContent}>
             <Text style={styles.purchaseHeading}>One-time purchase</Text>
-            <Button title={product.inStock ? `Add to Cart — ${money(product.price, product.currency)}` : 'Currently Unavailable'} onPress={add} disabled={!product.inStock} />
+            <Button title={`Add to Cart — ${money(product.price, product.currency)}`} onPress={add} />
           </View> : null}
 
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>Availability</Text>
-            <Text style={styles.muted}>{product.inStock ? 'Available for purchase.' : 'Current packed stock is limited.'}</Text>
+            <Text style={styles.muted}>Availability is confirmed when you place the order.</Text>
             <Text style={[styles.infoLabel, { marginTop: 12 }]}>Purchase</Text>
             <Text style={styles.muted}>{canBuyOneTime ? 'One-time purchase available.' : 'Purchase unavailable.'}</Text>
             <Text style={[styles.infoLabel, { marginTop: 12 }]}>Delivery</Text>

@@ -53,7 +53,7 @@ export function ProductCard({ product, onPress }: { product: Product; onPress: (
           <Text style={styles.price}>₹{product.price}</Text>
           {hasDiscount ? <Text style={styles.mrp}>₹{product.mrp}</Text> : null}
         </View>
-        {product.inStock && product.oneTimePurchase ? <Pressable accessibilityRole="button" accessibilityLabel={`Add ${product.name} to cart`} onPress={() => addToCart(product)} style={styles.addButton}><Text style={styles.addText}>+</Text></Pressable> : <Text style={styles.soldOut}>Sold out</Text>}
+        {product.oneTimePurchase ? <Pressable accessibilityRole="button" accessibilityLabel={`Add ${product.name} to cart`} onPress={() => addToCart(product)} style={styles.addButton}><Text style={styles.addText}>+</Text></Pressable> : null}
       </View>
       {hasDiscount ? <Text style={styles.saving}>Save ₹{Math.max(0, Number(product.mrp) - product.price)}</Text> : null}
     </View>
